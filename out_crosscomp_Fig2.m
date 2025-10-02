@@ -5,123 +5,10 @@ out_crosscomp_startup;
 % Note - EC202 has no STG coverage
 SIDs = [sSIDs, eSIDs]; % , {'HS11', 'HS9', 'HS10'}
 tps = 50:55;
-
-% could add _wordFreqLog to the full model
-% load in surprisal values
-% using phonetic feature instead of splitting by vowel
-modelnames_timit={'phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ...%remove onset
-    'onset_maxDtL_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ... % 2 remove consonant features        
-    'onset_phnfeatConsOnset_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ... % 3 remove peakrate
-    'onset_phnfeatConsOnset_maxDtL_wordOns_wordL_engSurpNoOnsBin', ... % 4 remove formant
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset', ... % 5 remove word feat/base
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL', ... % 6 remove surprise
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_engSurpNoOnsBin', ... % 7 remove word only
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ... % 8 full
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns', ... % 9 remove surprise and length
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordFreqLog', ... 
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_engSurpNoOnsBin_wordFreqLog'}; % add in frequency
-%'onset_phnfeatConsOnset_maxDtL_formantMedOnset_engSurpNoOnsBin', ... %remove word
-
-modelnames_dimex={'phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ...%remove onset
-    'onset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ... %remove consonant features        
-    'onset_phnfeatConsOnset_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ... %remove peakrate
-    'onset_phnfeatConsOnset_maxDtL_wordOns_wordL_spSurpNoOnsBin', ... %remove formant
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset', ... %remove word feat/base
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL', ... % remove surprise
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_spSurpNoOnsBin', ... % remove word only
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin' ... % full
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns', ...
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordFreqLog', ...
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin_wordFreqLog'}; % full v2
-
-[wordsurp_encoding] = loadUniqueVarTbl(modelnames_timit, modelnames_dimex, SIDs);
-wordsurp_details.featureOrd ...
-    = {'onset', 'peakrate', 'formant', 'consonant', 'word+surp', 'word', 'surp', 'wordO', 'wordL', 'wordF'};
-% the word feature contain the word onset and the word length, wordO is
-% only onset, wordL is only length, wordF is wordFrequency
-imgall = load_allimgdata;
-wordsurp_encoding.hemi = cellfun(@(x) imgall.(x).hemi, ...
-    wordsurp_encoding.SID, 'UniformOutput', false);
-wordsurp_details.models_dimex = modelnames_dimex;
-wordsurp_details.models_timit = modelnames_timit;
-
-% load in p-values from permutation testing
-sp_wordsurp_pval = nan(1, height(wordsurp_encoding));
-en_wordsurp_pval = nan(1, height(wordsurp_encoding));
-prefix = 'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_';
-permodel = {[ prefix 'engSurpNoOnsBin_wordFreqLog'], ...
-    [prefix 'spSurpNoOnsBin_wordFreqLog']};
-for s = unique(wordsurp_encoding.SID)'
-    SID = s{1};
-    idx = strcmp(wordsurp_encoding.SID, SID);
-    elidx = wordsurp_encoding.el(idx);
-
-    for c = 1:2 %{'timit', 'dimex'}
-        pvalpath=fullfile(datapath, 'permTest_wordSurp', SID); % c{1}, 
-        cmod=dir(fullfile(pvalpath, '*_zX*_*mat')); 
-        permidx = find(contains({cmod.name}, permodel{c}));
-        permfname=cmod(permidx).name;
-
-        % load pvalues from permutation testing
-        pvals = load(fullfile(pvalpath, permfname), 'pval');
-        pvals = pvals.pval;
-        
-        if c==1 % strcmp(c{1}, 'timit')
-            en_wordsurp_pval(idx) = pvals(elidx);
-        else
-            sp_wordsurp_pval(idx) = pvals(elidx);
-        end
-    end
-end
-wordsurp_encoding.sp_wordsurp_pval = sp_wordsurp_pval';
-wordsurp_encoding.eng_wordsurp_pval = en_wordsurp_pval';
-
-rsq_thresh = 0.05;
-idx = (wordsurp_encoding.eng_base_rsq>rsq_thresh& wordsurp_encoding.sp_base_rsq>rsq_thresh);
-wordsurp_encoding = wordsurp_encoding(idx, :);
+load('data/Figure2/Figure2_WordUniVar.mat');
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
-
-%% Alternate models
-% Alternate models
-% modelnames_timit={'phnfeatonset_maxDtL_wordOns_wordL_engSurpBin', ... % no onset feat
-%     'onset_maxDtL_wordOns_wordL_engSurpBin', ... % no consonant  feat
-%     'onset_phnfeatonset_wordOns_wordL_engSurpBin', ... % no peakrate feat
-%     'onset_maxDtL_wordOns_wordL_engSurpBin', ... % no formant feat
-%     'onset_phnfeatonset_maxDtL', ... % no word/surp feat (base)
-%     'onset_phnfeatonset_maxDtL_wordOns_wordL', ... % no surp feat   
-%     'onset_phnfeatonset_maxDtL_wordOns_wordL_engSurpBin', ... % full model feat
-%     'onset_phnfeatConsOnset_maxDtL_formant_wordOns_wordL_engSurpBin' % larger full model
-%     };  
-% 
-% modelnames_dimex={'maxDtL_phnfeatonset_wordOns_wordL_spSurpBin', ... % no onset feat
-%     'onset_maxDtL_wordOns_wordL_spSurpBin', ... % no consonant  feat
-%     'onset_phnfeatonset_wordOns_wordL_spSurpBin', ... % no peakrate feat
-%     'onset_maxDtL_wordOns_wordL_spSurpBin', ... % no formant feat
-%     'onset_phnfeatonset_maxDtL', ... % no word/surp feat (base)
-%     'onset_phnfeatonset_maxDtL_wordOns_wordL', ... % no surp feat   
-%     'onset_phnfeatonset_maxDtL_wordOns_wordL_spSurpBin', ... % full model feat
-%     'onset_phnfeatConsOnset_maxDtL_formant_wordOns_wordL_spSurpBin' % larger full model
-%     }; 
-
-% modelnames_timit={'phnfeatConsOnset_maxDtL_formant_wordOns_wordL_engSurpBin', ... % no onset feat
-%     'onset_maxDtL_formant_wordOns_wordL_engSurpBin', ... % no consonant  feat
-%     'onset_phnfeatConsOnset_formant_wordOns_wordL_engSurpBin', ... % no peakrate feat
-%     'onset_phnfeatConsOnset_maxDtL_wordOns_wordL_engSurpBin', ... % no formant feat
-%     'onset_phnfeatConsOnset_maxDtL_formant', ... % no word/surp feat (base)
-%     'onset_phnfeatConsOnset_maxDtL_formant_wordOns_wordL', ... % no surp feat   
-%     'onset_phnfeatConsOnset_maxDtL_formant_wordOns_wordL_engSurpBin', ... % full model feat
-%     };  
-% 
-% modelnames_dimex={'phnfeatConsOnset_maxDtL_formant_wordOns_wordL_spSurpBin', ... % no onset feat
-%     'onset_maxDtL_formant_wordOns_wordL_spSurpBin', ... % no consonant  feat
-%     'onset_phnfeatConsOnset_formant_wordOns_wordL_spSurpBin', ... % no peakrate feat
-%     'onset_phnfeatConsOnset_maxDtL_wordOns_wordL_spSurpBin', ... % no formant feat
-%     'onset_phnfeatConsOnset_maxDtL_formant', ... % no word/surp feat (base)
-%     'onset_phnfeatConsOnset_maxDtL_formant_wordOns_wordL', ... % no surp feat   
-%     'onset_phnfeatConsOnset_maxDtL_formant_wordOns_wordL_spSurpBin', ... % full model feat
-%     }; 
+    betaInfo* *encoding* allidx fthresh Dcons *wrd* *modelnames*;
 
 %% A - Example annotated sentences 
 
@@ -130,14 +17,6 @@ wordlists = cellfun(@(x) join(x, ' '), {timit_details.sentdet.wordList});
 x = find(strcmp(wordlists, 'the wagons were burning fiercely'));
 
 sents = {42, x};
-
-% Call makeSurprisal function for TIMIT and DIMEx details
-[timit_details.sentdet] = makeSurprisal(timit_details.sentdet, 8, 'timit');
-[dimex_details.sentdet] = makeSurprisal(dimex_details.sentdet, 8, 'dimex');
-
-% Add in frequency and length
-[timit_details.sentdet] = makeWordFreq(timit_details.sentdet, 8, 'timit');
-[dimex_details.sentdet] = makeWordFreq(dimex_details.sentdet, 8, 'dimex');
 
 % Assign corpus details to a cell array
 corpus_details = {dimex_details, timit_details};
@@ -150,11 +29,13 @@ figure;
 
 % Set the x-axis limits for the plots
 xl = [0, 1.8];
+xlims = {[0.52 1.35], [0.15 1.3]};
 
 % Iterate over the two corpora (DIMEx and TIMIT)
 numcorp = 2;
 for c = 1:numcorp
     details = corpus_details{c};
+    xl = xlims{c};
 
     disp(details.sentdet(sents{c}).name)
     
@@ -256,7 +137,16 @@ for c = 1:numcorp
         % Plot word boundaries
         subplot(5, numcorp, numcorp*3+c);
         %plot(x, sent_info.loudness, 'Color', [0.1 0.1 0.1], 'LineWidth', 1.5);
-        xline(x(sent_info.wordOns>0), 'LineWidth', 2);
+        xline(x(sent_info.wordOns>0), 'LineWidth', 2, 'HandleVisibility', 'off'); hold on;
+
+        % plotting frequency
+        wfidx = sent_info.wordL>0;
+        scatter(x(wfidx), sent_info.wordL(wfidx), 40, 'k', 'filled', ...
+            'DisplayName', 'wordLength', 'Marker', '<');
+
+        wfidx = sent_info.wordFreqLog>0;
+        scatter(x(wfidx), sent_info.wordFreqLog(wfidx), 30, 'k', ...
+            'filled', 'DisplayName', 'wordFreq');
         xlim(xl);
         box off;
     end   
@@ -265,16 +155,182 @@ end
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
+%% B - Native vs. Foreign: word / sequence surprisal unique variance (box-plots)
+
+% field = {'eng_rsq_surprisal', 'sp_rsq_surprisal'}; 
+% field = {'eng_uv_phnfeat', 'sp_uv_phnfeat'}; 
+
+thresh = 0.001;
+
+features = {'wordO', 'wordF', 'wordL', 'surp', 'word+surp'}; % word+surp
+titles = { 'Boundary',  'Frequency', 'Length', 'Phoneme Surprisal', 'Both'};
+fields = {'eng_uv_all', 'sp_uv_all'}; 
+
+ctr = 1;
+native = cell(length(features), 1);
+sid_native = cell(length(features), 1);
+nonnative = cell(length(features), 1);
+sid_nonnative = cell(length(features), 1);
+sid = cell(length(features), 1);
+el = cell(length(features), 1);
+hemi = cell(length(features), 1);
+
+for feat = features
+    index = ismember(wordsurp_details.featureOrd, feat);
+    
+    for ls = [1 2 4]
+        % Extract subject id and electrode for linear mixed effect model
+        if ismember(ls, [1, 2])
+            sid{ctr} = [sid{ctr}; wordsurp_encoding.SID(wordsurp_encoding.ls==ls)];
+            el{ctr} = [el{ctr}; wordsurp_encoding.el(wordsurp_encoding.ls==ls)];
+            hemi{ctr} = [hemi{ctr}; wordsurp_encoding.hemi(wordsurp_encoding.ls==ls)];
+        end
+
+        for f = 1:2 % Aggregate over English and Spanish fields (English is first)
+            field = fields{f};    
+            y = wordsurp_encoding.(field)(:, index);   
+            sid_tmp = wordsurp_encoding.SID;   
+            
+            % Removing bilinguals so the comparison is more balanced
+            if (f == 1 && ismember(ls, 2)) || (f == 2 && ismember(ls, 1))
+                native{ctr} = [native{ctr}; y(wordsurp_encoding.ls==ls)];  
+                sid_native{ctr} = [sid_native{ctr}; sid_tmp(wordsurp_encoding.ls==ls)];
+            elseif (f == 1 && ismember(ls, 1)) || (f == 2 && ismember(ls, 2))
+                nonnative{ctr} = [nonnative{ctr}; y(wordsurp_encoding.ls==ls)];
+                sid_nonnative{ctr} = [sid_nonnative{ctr}; sid_tmp(wordsurp_encoding.ls==ls)];
+            end
+        end
+    end
+    ctr = ctr + 1;
+end
+
+% Combine the consonant and vowel features into one
+subplts = {1, 2, 3, 4}; % add 5 here to see word+surprisal
+ynat_pie = nan(length(subplts), 2);
+ynon_pie = nan(length(subplts), 2);
+
+% split by sid
+ynat_sid = cell(length(subplts), 2);
+ynon_sid = cell(length(subplts), 2);
+
+figure('Renderer', 'Painters');
+for s = 1:length(subplts)
+    
+    % Combining native and unfamiliar subjects
+    % subplot(1, length(subplts), s)
+    rep = length(subplts{s});
+    
+    % Native boxplot
+    y_nat = arrayfun(@(x) native{x}, [subplts{s}], 'UniformOutput', false);
+    y_nat = cat(1, y_nat{:});
+    ynat_pie(s, :) = [sum(y_nat<thresh); sum(y_nat>thresh)];
+
+    % Per subject, how many electrodes meet threshold?
+    y_sid = arrayfun(@(x) sid_native{x}, [subplts{s}], 'UniformOutput', false);
+    y_sid = repmat(y_sid{1}, rep, 1);
+
+    prct = cellfun(@(x) sum(y_nat>thresh & strcmp(y_sid, x)) ...
+        ./sum(strcmp(y_sid, x)), unique(y_sid));
+    cnt = cellfun(@(x) sum(strcmp(y_sid, x)), unique(y_sid));
+    ynat_sid{s, 1} = [prct, cnt];
+    clear y_sid prct cnt
+
+    h=boxchart(ones(sum(y_nat>thresh), 1)+(s-1)*1.5, y_nat(y_nat>thresh), ...
+        'BoxFaceColor', [0.5 0.5 0.9], 'MarkerColor', 'k', 'Notch','on', 'BoxWidth', 0.3); hold on;
+                    h.JitterOutliers = 'on';
+                    h.MarkerStyle = '.';
+                    h.MarkerColor = 'k';
+
+    % Unfamiliar boxplot
+    y_non = arrayfun(@(x) nonnative{x}, [subplts{s}], 'UniformOutput', false);
+    y_non = cat(1, y_non{:});
+    ynon_pie(s, :) = [sum(y_non<thresh); sum(y_non>thresh)];
+
+    % Per sid, how many electrodes meet threshold?
+    y_sid = arrayfun(@(x) sid_nonnative{x}, [subplts{s}], 'UniformOutput', false);
+    y_sid = repmat(y_sid{1}, rep, 1);
+
+    prct = cellfun(@(x) sum(y_non>thresh & strcmp(y_sid, x)) ...
+        ./sum(strcmp(y_sid, x)), unique(y_sid));
+    cnt = cellfun(@(x) sum(strcmp(y_sid, x)), unique(y_sid));
+    ynon_sid{s} = [prct, cnt];
+    clear y_sid prct cnt
+
+    h=boxchart(ones(sum(y_non>thresh), 1)*1.5+(s-1)*1.5, y_non(y_non>thresh), ...
+        'BoxFaceColor', [0.9 0.5 0.5], 'MarkerColor', 'k', 'Notch','on', 'BoxWidth', 0.3);
+    h.JitterOutliers = 'on';
+    h.MarkerStyle = '.';
+    h.MarkerColor = 'k';
+
+    % Formatting
+    ylim([0 prctile([y_nat(y_nat>thresh); y_non(y_non>thresh)], 99)+0.05]);
+    yticks(0:0.05:0.1)
+    % xticks([1 2]);
+    % xticklabels(conditionLabels);
+    xlim([0.5 2.5]);
+    ylim([0 0.05]);
+    maxy = ylim();
+    set(gca, 'YScale', 'log')
+
+    % Statistical testing with linear mixed effect model
+    tbl=table();
+    idx = y_nat>thresh & y_non>thresh;
+    tbl.rsq = [y_nat(idx); y_non(idx)];
+    
+    elecs = repmat(el{1}, rep, 1);
+    sids = repmat(sid{1}, rep, 1);
+    lss = cellfun(@(x) find(cellfun(@(y) ...
+        ismember(x, y), {sSIDs, eSIDs, bSIDs})), sids);
+    hemis = repmat(hemi{1}, rep, 1);
+
+    tbl.sid = repmat(sids(idx), 2, 1);
+    tbl.elec = repmat(elecs(idx), 2, 1);
+    tbl.hemi = repmat(hemis(idx), 2, 1);
+    tbl.ls = repmat(lss(idx), 2, 1);
+    tbl.native = [ones(sum(idx), 1); ones(sum(idx), 1)*2];
+    clear elecs sids
+
+    lme2 = fitlme(tbl,'rsq~native+ls+(1|hemi)+(1|sid)+(1|elec:sid)');
+    disp(titles{s})
+    disp(lme2)
+    p = lme2.Coefficients.pValue(3);
+
+    disp(['LME native language p-value = ' num2str(p)]);
+    
+    % line([1, 2], [maxy(2)-0.1 maxy(2)-0.1], 'Color', 'k');
+    if isempty(getSigStr(p, 2))
+        %text(1, maxy(2)-0.02, 'n.s.', 'FontSize', 15);
+        text((s-1)*1.5 + 1, maxy(2)-0.02, 'n.s.', 'FontSize', 25);
+    else
+        %text(1, maxy(2)-0.02, getSigStr(p, 1), 'FontSize', 15);
+        text((s-1)*1.5 + 1, maxy(2)-0.02, getSigStr(p, 1), 'FontSize', 25);
+    end
+    %title(titles{s},  'FontWeight', 'normal');
+    set(gca, 'FontSize', 13);
+    ylabel('\Delta R^2 (log)');
+    legend({'native', 'foreign'});
+end
+xlim([0.5 1.5*length(subplts)+0.5]);
+xticks((1:length(subplts))*1.5-0.25);
+xticklabels(titles);
+
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+
 %% C - Native vs. Foreign: acoustic phonetic unique variance (box-plots)
 
 % field = {'eng_rsq_surprisal', 'sp_rsq_surprisal'}; 
 % field = {'eng_uv_phnfeat', 'sp_uv_phnfeat'}; 
-fieldname = {'English', 'Spanish'};
-conditionLabels = {'native', 'foreign'};
+
 thresh = 0.001;
 
 features = {'peakrate', 'formant', 'consonant'};
 titles = {'PeakRate', 'Vowel Formants', 'Consonant'};
+
+% features = {'pitch', 'env'};
+% titles = {'Pitch', 'Envelope'};
+% features = {'bisurp', 'trisurp'};
+% titles = {'Biphone', 'Triphone'};
 fields = {'eng_uv_all', 'sp_uv_all'}; 
 
 ctr = 1;
@@ -316,7 +372,10 @@ for feat = features
 end
 
 % Combine the consonant and vowel features into one
-subplts = {1, 2, 3};
+subplts = cell(1, length(features));
+for i = 1:length(subplts)
+    subplts{i} = i;
+end
 ynat_pie = nan(length(subplts), 2);
 ynon_pie = nan(length(subplts), 2);
 
@@ -430,174 +489,12 @@ legend({'native', 'foreign'});
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
-%% B - Native vs. Foreign: word / sequence surprisal unique variance (box-plots)
-
-% field = {'eng_rsq_surprisal', 'sp_rsq_surprisal'}; 
-% field = {'eng_uv_phnfeat', 'sp_uv_phnfeat'}; 
-fieldname = {'English', 'Spanish'};
-conditionLabels = {'native', 'foreign'};
-thresh = 0.001;
-
-features = {'wordO', 'wordF', 'wordL', 'surp'};
-titles = { 'Boundary',  'Frequency', 'Length', 'Phoneme Surprisal'};
-fields = {'eng_uv_all', 'sp_uv_all'}; 
-
-ctr = 1;
-native = cell(length(features), 1);
-sid_native = cell(length(features), 1);
-nonnative = cell(length(features), 1);
-sid_nonnative = cell(length(features), 1);
-sid = cell(length(features), 1);
-el = cell(length(features), 1);
-hemi = cell(length(features), 1);
-
-for feat = features
-    index = ismember(wordsurp_details.featureOrd, feat);
-    
-    for ls = [1 2 4]
-        % Extract subject id and electrode for linear mixed effect model
-        if ismember(ls, [1, 2])
-            sid{ctr} = [sid{ctr}; wordsurp_encoding.SID(wordsurp_encoding.ls==ls)];
-            el{ctr} = [el{ctr}; wordsurp_encoding.el(wordsurp_encoding.ls==ls)];
-            hemi{ctr} = [hemi{ctr}; wordsurp_encoding.hemi(wordsurp_encoding.ls==ls)];
-        end
-
-        for f = 1:2 % Aggregate over English and Spanish fields (English is first)
-            field = fields{f};    
-            y = wordsurp_encoding.(field)(:, index);   
-            sid_tmp = wordsurp_encoding.SID;   
-            
-            % Removing bilinguals so the comparison is more balanced
-            if (f == 1 && ismember(ls, 2)) || (f == 2 && ismember(ls, 1))
-                native{ctr} = [native{ctr}; y(wordsurp_encoding.ls==ls)];  
-                sid_native{ctr} = [sid_native{ctr}; sid_tmp(wordsurp_encoding.ls==ls)];
-            elseif (f == 1 && ismember(ls, 1)) || (f == 2 && ismember(ls, 2))
-                nonnative{ctr} = [nonnative{ctr}; y(wordsurp_encoding.ls==ls)];
-                sid_nonnative{ctr} = [sid_nonnative{ctr}; sid_tmp(wordsurp_encoding.ls==ls)];
-            end
-        end
-    end
-    ctr = ctr + 1;
-end
-
-% Combine the consonant and vowel features into one
-subplts = {1, 2, 3, 4};
-ynat_pie = nan(length(subplts), 2);
-ynon_pie = nan(length(subplts), 2);
-
-% split by sid
-ynat_sid = cell(length(subplts), 2);
-ynon_sid = cell(length(subplts), 2);
-
-figure('Renderer', 'Painters');
-for s = 1:length(subplts)
-    
-    % Combining native and unfamiliar subjects
-    % subplot(1, length(subplts), s)
-    rep = length(subplts{s});
-    
-    % Native boxplot
-    y_nat = arrayfun(@(x) native{x}, [subplts{s}], 'UniformOutput', false);
-    y_nat = cat(1, y_nat{:});
-    ynat_pie(s, :) = [sum(y_nat<thresh); sum(y_nat>thresh)];
-
-    % Per subject, how many electrodes meet threshold?
-    y_sid = arrayfun(@(x) sid_native{x}, [subplts{s}], 'UniformOutput', false);
-    y_sid = repmat(y_sid{1}, rep, 1);
-
-    prct = cellfun(@(x) sum(y_nat>thresh & strcmp(y_sid, x)) ...
-        ./sum(strcmp(y_sid, x)), unique(y_sid));
-    cnt = cellfun(@(x) sum(strcmp(y_sid, x)), unique(y_sid));
-    ynat_sid{s, 1} = [prct, cnt];
-    clear y_sid prct cnt
-
-    h=boxchart(ones(sum(y_nat>thresh), 1)+(s-1)*1.5, y_nat(y_nat>thresh), ...
-        'BoxFaceColor', [0.5 0.5 0.9], 'MarkerColor', 'k', 'Notch','on', 'BoxWidth', 0.3); hold on;
-                    h.JitterOutliers = 'on';
-                    h.MarkerStyle = '.';
-                    h.MarkerColor = 'k';
-
-    % Unfamiliar boxplot
-    y_non = arrayfun(@(x) nonnative{x}, [subplts{s}], 'UniformOutput', false);
-    y_non = cat(1, y_non{:});
-    ynon_pie(s, :) = [sum(y_non<thresh); sum(y_non>thresh)];
-
-    % Per sid, how many electrodes meet threshold?
-    y_sid = arrayfun(@(x) sid_nonnative{x}, [subplts{s}], 'UniformOutput', false);
-    y_sid = repmat(y_sid{1}, rep, 1);
-
-    prct = cellfun(@(x) sum(y_non>thresh & strcmp(y_sid, x)) ...
-        ./sum(strcmp(y_sid, x)), unique(y_sid));
-    cnt = cellfun(@(x) sum(strcmp(y_sid, x)), unique(y_sid));
-    ynon_sid{s} = [prct, cnt];
-    clear y_sid prct cnt
-
-    h=boxchart(ones(sum(y_non>thresh), 1)*1.5+(s-1)*1.5, y_non(y_non>thresh), ...
-        'BoxFaceColor', [0.9 0.5 0.5], 'MarkerColor', 'k', 'Notch','on', 'BoxWidth', 0.3);
-    h.JitterOutliers = 'on';
-    h.MarkerStyle = '.';
-    h.MarkerColor = 'k';
-
-    % Formatting
-    ylim([0 prctile([y_nat(y_nat>thresh); y_non(y_non>thresh)], 99)+0.05]);
-    yticks(0:0.05:0.1)
-    % xticks([1 2]);
-    % xticklabels(conditionLabels);
-    xlim([0.5 2.5]);
-    ylim([0 0.05]);
-    maxy = ylim();
-    set(gca, 'YScale', 'log')
-
-    % Statistical testing with linear mixed effect model
-    tbl=table();
-    idx = y_nat>thresh & y_non>thresh;
-    tbl.rsq = [y_nat(idx); y_non(idx)];
-    
-    elecs = repmat(el{1}, rep, 1);
-    sids = repmat(sid{1}, rep, 1);
-    lss = cellfun(@(x) find(cellfun(@(y) ...
-        ismember(x, y), {sSIDs, eSIDs, bSIDs})), sids);
-    hemis = repmat(hemi{1}, rep, 1);
-
-    tbl.sid = repmat(sids(idx), 2, 1);
-    tbl.elec = repmat(elecs(idx), 2, 1);
-    tbl.hemi = repmat(hemis(idx), 2, 1);
-    tbl.ls = repmat(lss(idx), 2, 1);
-    tbl.native = [ones(sum(idx), 1); ones(sum(idx), 1)*2];
-    clear elecs sids
-
-    lme2 = fitlme(tbl,'rsq~native+ls+(1|hemi)+(1|sid)+(1|elec:sid)');
-    disp(titles{s})
-    disp(lme2)
-    p = lme2.Coefficients.pValue(3);
-
-    disp(['LME native language p-value = ' num2str(p)]);
-    
-    % line([1, 2], [maxy(2)-0.1 maxy(2)-0.1], 'Color', 'k');
-    if isempty(getSigStr(p, 2))
-        %text(1, maxy(2)-0.02, 'n.s.', 'FontSize', 15);
-        text((s-1)*1.5 + 1, maxy(2)-0.02, 'n.s.', 'FontSize', 25);
-    else
-        %text(1, maxy(2)-0.02, getSigStr(p, 1), 'FontSize', 15);
-        text((s-1)*1.5 + 1, maxy(2)-0.02, getSigStr(p, 1), 'FontSize', 25);
-    end
-    %title(titles{s},  'FontWeight', 'normal');
-    set(gca, 'FontSize', 13);
-    ylabel('\Delta R^2 (log)');
-    legend({'native', 'foreign'});
-end
-xlim([0.5 1.5*length(subplts)+0.5]);
-xticks((1:length(subplts))*1.5-0.25);
-xticklabels(titles);
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
-
 %% D - MNI Brain with Native / Unfamiliar word / surprisal electrodes highlighted (brain)
 
 % initialize design electrode structure
 fields = {'sp_uv_all', 'eng_uv_all'}; 
-uv_thresh = 0.001;
+uv_thresh = 0;
+% pval_thresh = 0.05;
 
 % label = 'word+surprisal';
 % label = 'peakrate';
@@ -630,7 +527,7 @@ for native = 0:1
         % make desel structure
         desel=struct();
         desel.conds = 1:7;
-        ls = [1, 2]; % can only do 1-2
+        %ls = [1, 2]; % can only do 1-2
         
         % size and color
         % 1:20:200; %ones(1, 10)*0.00000001; %1
@@ -662,7 +559,7 @@ for native = 0:1
         
         % discretize values
         % 0.005:0.005:0.01
-        binedges = [-1 uv_thresh:0.005:0.01 0.015:0.015:0.1];
+        % binedges = [-1 uv_thresh:0.005:0.01 0.015:0.015:0.1];
         binedges = [-1 uv_thresh:0.01:0.1];
         for s=unique(wordsurp_encoding.SID)'
             SID = s{1};
@@ -683,7 +580,7 @@ for native = 0:1
         colormap(desel.cols);
         colorbar;
         
-        mni_lh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'lh', 0);
+        mni_lh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'lh', 0, 1, imgall);
         
         sgtitle(native);
         l = light;
@@ -704,42 +601,12 @@ for native = 0:1
         % p(4).Color = 'w';
         % p(4).FontSize = 13;
 
-        mni_rh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'rh', 0);
+        mni_rh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'rh', 0, 1, imgall);
         sgtitle(native);
         l = light;
         view(90, 0);
         set(l,'Style', 'infinite', 'Position',[1 0 0],'Color',[0.8 0.8 0.8]);
         alpha 0.85;
-
-        % add a pie
-        % axes('Position',[.6 .15 .3 .3])
-        % p = pie([sum(mni_rh.cond>1), sum(mni_rh.cond==1)], [1 1]); 
-        % p(1).FaceColor = [desel.cols(5, :)];
-        % p(1).EdgeColor = 'none';
-        % p(3).FaceColor = [0.6 0.6 0.6];
-        % p(3).EdgeColor = 'none';
-        % p(2).FontWeight = 'bold';
-        % p(2).Color = 'w';
-        % p(2).FontSize = 13;
-        % p(4).FontWeight = 'bold';
-        % p(4).Color = 'w';
-        % p(4).FontSize = 13;
-
-        % new pie figure that combines across hemispheres
-        figure;
-        wordsurp = sum(mni_lh.cond>1) + sum(mni_rh.cond>1);
-        nonwordsurp = sum(mni_lh.cond==1) + sum(mni_rh.cond==1);
-        p = pie([wordsurp, nonwordsurp], [1 1]);
-        p(1).FaceColor = [desel.cols(5, :)];
-        p(1).EdgeColor = 'none';
-        p(3).FaceColor = [0.6 0.6 0.6];
-        p(3).EdgeColor = 'none';
-        p(2).FontWeight = 'bold';
-        p(2).Color = 'w';
-        p(2).FontSize = 13;
-        p(4).FontWeight = 'bold';
-        p(4).Color = 'w';
-        p(4).FontSize = 13;
      end
 end
 
@@ -747,7 +614,183 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
 
-%% E - Native vs. Foreign: word and sequence surprisal unique variance (scatter)
+%% E - Brain counts with Native / Unfamiliar word / surprisal electrodes highlighted (brain)
+
+pthresh = 0.05;
+% make empty tables with all these at 0
+anat_labels = {'superiortemporal', 'postcentral', ...
+    'middletemporal', 'supramarginal', 'precentral'};
+tbl = table([0 0 0 0 0]', anat_labels', 'VariableNames', {'count', 'area'});
+anat_counts = {tbl, tbl};
+
+for native = [0, 1]
+    for ls = 1:2
+        if (ls == 1 && ~native) || (ls == 2 && native) 
+            idx = wordsurp_encoding.ls==ls ...
+                & wordsurp_encoding.eng_wordsurp_pval<pthresh;
+        else
+            idx = wordsurp_encoding.ls==ls ...
+                    & wordsurp_encoding.sp_wordsurp_pval<pthresh;
+        end
+        [counts, ~, ~, labels] = crosstab(wordsurp_encoding.anatomy(idx));
+
+        % if anat_counts{native+1} is already a table, add to existing, otherwise make a new table
+        if istable(anat_counts{native+1})
+            % find equivalent area in table and add count
+            for i = 1:length(labels)
+                area_idx = find(strcmp(anat_counts{native+1}.area, labels(i)));
+                if ~isempty(area_idx)
+                    anat_counts{native+1}.count(area_idx) = ...
+                        anat_counts{native+1}.count(area_idx) + counts(i);
+                else
+                    anat_counts{native+1} = [anat_counts{native+1}; ...
+                        table(counts(i), labels(i), 'VariableNames', ...
+                        {'count', 'area'})];
+                end
+            end
+        else
+            anat_counts{native+1} = table(counts, labels, ...
+                'VariableNames', {'count', 'area'});
+        end
+    end
+end
+
+% Create horizontal bar charts for speech-responsive areas
+figure;
+subplot(1, 2, 1);
+
+% remove areas with count < 5 and sort by count
+% anat_counts{1} = anat_counts{1}(anat_counts{1}.count >= 2, :);
+% anat_counts{1} = sortrows(anat_counts{1}, 'count', 'descend');
+sortidx = cellfun(@(x) find(ismember([anat_counts{1}.area], x)), ...
+    anat_labels);
+barh(anat_counts{1}.area(sortidx), anat_counts{1}.count(sortidx), 'FaceColor', ...
+    [1, 0, 0], 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Red color for non-native
+title('Foreign');
+xlabel('Count');
+ylabel('Anatomical Area');
+set(gca, 'FontSize', 14);
+xlim([0 120]);
+xticks([0 100]);
+
+subplot(1, 2, 2);
+% remove areas with count < 5 and sort by count
+% anat_counts{2} = anat_counts{2}(anat_counts{2}.count >= 2, :);
+% anat_counts{2} = sortrows(anat_counts{2}, 'count', 'descend');
+sortidx = cellfun(@(x) find(ismember([anat_counts{2}.area], x)), ...
+    anat_labels);
+barh(anat_counts{2}.area(sortidx), anat_counts{2}.count(sortidx), 'FaceColor', ...
+    [0, 0, 1], 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Blue color for native
+title('Native');
+xlabel('Count');
+ylabel('Anatomical Area');
+set(gca, 'FontSize', 14);
+sgtitle('Speech-responsive areas');
+xlim([0 155]);
+xticks([0 100]);
+
+figure;
+% same thing but together for native and foreign (one plot)
+y_positions = 1:length(sortidx);
+bar_width = 0.35;  % Width of each bar
+
+% Plot bars side by side
+sortidx = cellfun(@(x) find(ismember([anat_counts{1}.area], x)), ...
+    anat_labels);
+barh(y_positions - bar_width/2, anat_counts{1}.count(sortidx), bar_width, ...
+    'FaceColor', [1, 0, 0], 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Red for non-native
+hold on;
+sortidx = cellfun(@(x) find(ismember([anat_counts{2}.area], x)), ...
+    anat_labels);
+barh(y_positions + bar_width/2, anat_counts{2}.count(sortidx), bar_width, ...
+    'FaceColor', [0, 0, 1], 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Blue for native
+
+% Set y-axis labels
+yticks(y_positions);
+yticklabels(anat_counts{1}.area(sortidx));
+
+% add legend
+legend('Foreign', 'Native');
+title('Word-level areas');
+
+% add xlabel
+xlabel('Count');
+xticks([0 100]);
+xlim([0 155]);
+yticklabels({'superiortemp', 'postcent', ...
+    'middletemp', 'supramarg', 'precent'});
+set(gca, 'FontSize', 14);
+box off;
+
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+
+
+%% F - Percentage of word-level responses across native and foreign
+
+% electrode selection details
+timit_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_timit_all.mat");
+dimex_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_dimex_all.mat");
+asccd_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_asccd_all.mat");
+
+figure;
+pthresh = 0.05;
+native_elecs = {dimex_elecs, timit_elecs, asccd_elecs}; % Spanish, English, Mandarin
+foreign_elecs = {timit_elecs, dimex_elecs, timit_elecs}; % English, Spanish, English
+native_fields = {'sp_wordsurp_pval', 'eng_wordsurp_pval'};
+foreign_fields = {'eng_wordsurp_pval', 'sp_wordsurp_pval'};
+prct_word = nan(2, 2);
+for ls = [1, 2] % languages : spanish, english, mandarin
+    
+    % find number of speech responsive electrodes in table
+    idx = sent_encoding.ls == ls;
+    sids = unique(sent_encoding.SID(idx));
+    % 1st column : native, 2nd column : foreign
+    numspeech = zeros(length(sids), 2);
+    numword = zeros(length(sids), 2);
+
+    % for each subject, identify the number of total elecs
+    ctr = 1;
+    for s = sids'
+        sid = s{1};
+        numspeech(ctr, :) = [length(native_elecs{ls}.allidx.(sid)), ...
+            length(foreign_elecs{ls}.allidx.(sid))];
+        nativeidx = strcmp(wordsurp_encoding.SID, sid) & ...
+            wordsurp_encoding.(native_fields{ls})<pthresh;
+        foreignidx = strcmp(wordsurp_encoding.SID, sid) & ...
+            wordsurp_encoding.(foreign_fields{ls})<pthresh;
+        numword(ctr, :) = [sum(nativeidx), sum(foreignidx)];
+        clear nativeidx foreignidx;
+        ctr = ctr + 1;
+    end
+    prct_word(ls, 1) = sum(numword(1, :))/ sum(numspeech(1, :));
+    prct_word(ls, 2) = sum(numword(2, :))/ sum(numspeech(2, :)); 
+end
+
+% make a figure for pie chart combining across languages
+figure;
+subplot(1, 2, 1);
+pc = pie([mean(prct_word(:, 1)), 1-mean(prct_word(:, 1))], [0 1]);
+pc(1).FaceColor = [0.6 0.6 1];
+pc(3).FaceColor = [0.8 0.8 0.8];
+pc(1).EdgeColor = 'none';
+pc(3).EdgeColor = 'none';
+pc(2).FontSize = 14;
+pc(4).FontSize = 14;
+
+subplot(1, 2, 2);
+pc = pie([mean(prct_word(:, 2)), 1-mean(prct_word(:, 2))], [0 1]);
+pc(1).FaceColor = [1 0.6 0.6];
+pc(3).FaceColor = [0.8 0.8 0.8];
+pc(1).EdgeColor = 'none';
+pc(3).EdgeColor = 'none';
+pc(2).FontSize = 14;
+pc(4).FontSize = 14;
+
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+
+%% G - Native vs. Foreign: word and sequence surprisal unique variance (scatter)
 
 % Specify the labels for analysis
 labels = {'word+surp'};
@@ -756,8 +799,7 @@ labels = {'word+surp'};
 figure('Position', [200, 100, 900, 900]);
 
 % Set a UV threshold for filtering
-uv_thresh = 0.001;
-pval_thresh = 0.1;
+pval_thresh = 0.05;
 
 % Initialize subplot counter and axis array
 ctr = 1;
@@ -806,8 +848,9 @@ for label = labels
         
         % Remove data points that do not meet the UV threshold or contain NaN values
         % all([x,y]<uv_thresh, 2)
-        %neg = any([pvals_x,pvals_y]>pval_thresh, 2) | isnan(x) | isnan(y);
-        neg = all([x,y]<uv_thresh, 2) | isnan(x) | isnan(y);
+        neg = all([pvals_x,pvals_y]>pval_thresh, 2) | ...
+            all([x,y]<0, 2) | isnan(x) | isnan(y);
+        %neg = all([x,y]<uv_thresh, 2) | isnan(x) | isnan(y);
         x(neg) = [];
         y(neg) = [];
         sid(neg) = [];
@@ -848,7 +891,7 @@ for label = labels
 
     [r, p] = corr(x_all(x_all>0&y_all>0), y_all(x_all>0&y_all>0), 'Rows', ...
         'complete', 'type', 'Spearman');
-    title({['r= ' num2str(r) ','], ['p=' num2str(p, 4)]});
+    title({['r(' num2str(sum(x_all>0&y_all>0)) ')= ' num2str(r) ','], ['p=' num2str(p, 4)]});
      % Increment the subplot counter
     ctr = ctr + 1; 
     hold on;
@@ -874,7 +917,6 @@ for i = 1:length(labels)
     % make colors all black
     colormap(repmat([0 0 0], 256, 1));
 end
-
 
 % add inlaid quadrant count on the top right corner
 % add a inlaid quadrant plot
@@ -903,12 +945,11 @@ yticks([1 2]);
 xticklabels({'-UV', '+UV'});
 yticklabels({'+UV', '-UV'});
 
-
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
 %% ----------------------- Supplementary Figures --------------------------
-%% S6 - Correlating word and sequence surprise in native speech condition (scatter)
+%% S7 - Correlating word and sequence surprise in native speech condition (scatter)
 
 feats = {'surp', 'wordO', 'wordF', 'wordL'};
 fields = {'sp_uv_all', 'eng_uv_all'};
@@ -953,7 +994,8 @@ for f= 1:length(feats)
         h.LineWidth = 2;
 
         orpos = x_all>0 & y_all<0 | x_all<0 & y_all>0;
-        scatter(x_all(orpos), y_all(orpos), 10, [0.5 0.5 0.5], 'filled','MarkerFaceAlpha', 0.8);
+        scatter(x_all(orpos), y_all(orpos), 10, [0.5 0.5 0.5], ...
+            'filled','MarkerFaceAlpha', 0.8);
         ylabel([featnames{j} ' \Delta R^2']);
         xlabel([featnames{f} ' \Delta R^2']);
 
@@ -963,11 +1005,10 @@ for f= 1:length(feats)
 
         % Perform permutation testing to compute correlation coefficient and p-value
         [r, p] = corr(x_all, y_all, 'Rows', 'complete', 'Type', 'Spearman');
-        title(['r= ' num2str(r, 2) ', ' getSigStr(p, 2)], 'FontWeight', 'normal');
+        title(['r(' num2str(length(x_all)) ')= ' num2str(r, 2) ', ' getSigStr(p, 2)], 'FontWeight', 'normal');
         ctr = ctr + 1;
     end
 end
-
 
 % xlim([-0.005 0.03]);
 % xticks(0:0.01:0.03);
@@ -977,173 +1018,9 @@ end
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
-%% S9 - Correlating unique variance of word / surp to unique variance of other features
+%% S8 - Native vs. Foreign: word + sequence surprisal unique variance (by subject box-plots)
 
-% Extract unique variance of word+surp from the wordsurp table
-
-% Top row of figure is English (TIMIT), bottom row is Spanish (DIMEx)
-fields = {'eng_uv_all', 'sp_uv_all'};
-
-labels = {{'word+surp', 'onset'}, {'word+surp', 'peakrate'}, ...
-    {'word+surp', 'formant'}, {'word+surp', 'consonant'}};
-
-for field = fields
-    figure('Position', [200, 100, 900, 500]);
-
-    % Select only native speakers of the language presented
-    if strcmp(field, 'eng_uv_all')
-        lsidx = ismember(wordsurp_encoding.ls, [2, 4]);
-        corpus = 'English';
-    else
-        lsidx = ismember(wordsurp_encoding.ls, [1, 4]);
-        corpus = 'Spanish';
-    end
-
-    ctr=1;
-    for l = labels
-        label = l{1};
-        index = [];
-        index(1) = find(ismember(wordsurp_details.featureOrd, label{1}));   
-        index(2) = find(ismember(wordsurp_details.featureOrd, label(2)));   
-        
-        ax(ctr)=subplot(2, length(labels), ctr+length(labels));
-       
-        x = wordsurp_encoding.(field{1})(lsidx, index(2));
-        y = wordsurp_encoding.(field{1})(lsidx, index(1));
-        sid = cellfun(@(x) str2double(x(3:end)), ...
-            wordsurp_encoding.SID(wordsurp_encoding.ls==ls));
-
-        % Ensure positive unique variance for both features being compared
-        pos = x>0 & y>0;
-        uv_thresh = 0.001;
-
-        [r(ctr), p(ctr)] = corr(x(pos), y(pos), 'Type', 'Spearman'); 
-        scatter(x(pos), y(pos), 20, 'k', 'filled'); hold on;
-%         scatter(x(~pos), y(~pos), 10, [0.5 0.5 0.5], 'filled');
-        
-        xticks(-0.05:0.05:0.15);
-        yticks(-0.05:0.05:0.15);
-
-        % Ensure limits capture 97% of scatter
-        maxlim = prctile([x; y], 100);
-        minlim = prctile([x; y], 3);  
-        xlim([0 maxlim]);
-        ylim([0 0.05]);
-    
-        % Add unique variance labels
-        xlabel([label{2} ' \Delta R^2']);
-
-        if ctr==1
-            ylabel([label{1} ' \Delta R^2']);
-        end
-        %title({['r= ' num2str(r(ctr), 3) ',']},{['p=' num2str(p(ctr), 3)]});
-
-        set(gca, 'FontSize', 13);
-        ctr=ctr+1;
-    end
-
-    subplot(2, length(labels), 1:length(labels)); 
-    bar(r, 'EdgeColor', 'none', 'FaceColor', [0.8 0.8 0.8]);
-    % print the pvalue on top of every bar
-    for i=1:length(r)
-        text(i, r(i)+0.01, getSigStr(p(i), 2), 'HorizontalAlignment', ...
-                'center', 'FontSize', 15);
-    end
-    
-    xlim([0.25 4.75]);
-    ylim([-0.5 0.5]);
-    yticks([0, 0.4]);
-    box off;
-    ylabel('Spearman corr')
-    set(gca, 'FontSize', 13)
-
-    for i=(1:length(labels))+length(labels)
-        subplot(2, length(labels), i);
-        h = lsline;
-        h.LineWidth = 2;
-        h.Color = 'k';
-        xline(0, 'Color', 'k', 'LineWidth', 1.5);
-        yline(0, 'Color', 'k', 'LineWidth', 1.5);
-    end
-    sgtitle([corpus ' speech']);
-end
-%linkaxes(ax(1:3));   % phonetic feat
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
-
-%% ----------------------------- UNUSED Panels ----------------------------
-%% Comparing acoustic phonetic representations across word-boundary electrodes
-
-uv_thresh = 0.0005;
-
-% aggregate uvs from ONLY native speech conditions
-native_uv = [wordsurp_encoding.sp_uv_all(wordsurp_encoding.ls==1, :); ...
-    wordsurp_encoding.eng_uv_all(wordsurp_encoding.ls==2, :)];
-native_rsq = [wordsurp_encoding.sp_full_rsq(wordsurp_encoding.ls==1, :); ...
-    wordsurp_encoding.eng_full_rsq(wordsurp_encoding.ls==2, :)];
-
-% get the index of word / surprisal electrodes in the native speech
-% condition
-wordidx = find(strcmp(wordsurp_details.featureOrd, 'word+surp'));
-word_elecs = native_uv(:, wordidx) > uv_thresh;
-
-% compare the unique variance of each feature family across the two groups
-figure; 
-feats = 1:4;
-% light green, orange, teal, yello
-cols = [114 171, 66;  44 170 170; 234, 177, 32;240 90 41;]/256;
-
-for f = feats
-
-    % get the index of the feature
-    feat = wordsurp_details.featureOrd{f};
-    featidx = find(strcmp(wordsurp_details.featureOrd, feat));
-    pos_uv = native_uv(:, featidx) > uv_thresh; % positive uv for violin plot
-
-    % subplot
-    subplot(1, length(feats), f);
-%     scatter(ones(sum(word_elecs), 1)-0.025+randn(sum(word_elecs), 1)*0.05, ...
-%         native_uv(word_elecs, featidx), 5, 'k', 'filled'); hold on;
-%     scatter(2*ones(sum(~word_elecs), 1)-0.025+randn(sum(~word_elecs), 1)*0.05, ...
-%         native_uv(~word_elecs, featidx), 5, 'k', 'filled'); hold on;
-    
-    % violin plot for the uv of word elecs and non word elecs
-% violin plot for the uv of word elecs and non word elecs
-    violinplot([native_uv(word_elecs & pos_uv, featidx); native_uv(~word_elecs & pos_uv, featidx)], ...
-        [ones(sum(word_elecs & pos_uv), 1); 2*ones(sum(~word_elecs & pos_uv), 1)], ...
-        'MarkerSize', 5, 'ViolinColor', [cols(f, :); brighten(cols(f, :), 0.8)] , 'MedianColor', [0 0 0], ...
-        'Bandwidth', 0.001, 'Width', 0.3);
-    hold on;
-    hold on;
-
-    [h, p] = ttest2(native_uv(word_elecs & pos_uv, featidx), native_uv(~word_elecs & pos_uv, featidx));
-    text(1, 0.08, getSigStr(p, 2));
-    
-    set(gca, 'YScale', 'log', 'FontSize', 13);
-    ylim([0.000 0.1]);
-    xlim([0.5 2.5]);
-    xticks([1 2]);
-    xticklabels({'word elecs', 'non-word elecs'});
-    ylabel('\Delta R^2');
-    %don't show legend
-    legend('off');
-    box off;
-    title(feat);
-end
-
-% rsq value
-% figure;
-% violinplot([native_rsq(word_elecs); native_rsq(~word_elecs)], ...
-%         [ones(sum(word_elecs), 1); 2*ones(sum(~word_elecs), 1)], ...
-%         'MarkerSize', 5, 'ViolinColor', [cols(f, :); brighten(cols(f, :), 0.8)] , 'MedianColor', [0 0 0], ...
-%         'Bandwidth', 0.1, 'Width', 0.3);
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
-
-%% Native vs. Foreign: word + sequence surprisal unique variance (by subject box-plots)
-thresh = 0.001;
+pthresh = 0.01;
 numsubj = length(unique(wordsurp_encoding.SID));
 native_unfamiliar_prct = nan(3, numsubj);
 
@@ -1161,22 +1038,22 @@ for s = unique(wordsurp_encoding.SID)'
         % first column is native language (Spanish), second column is
         % unfamiliar
         native_unfamiliar_prct(1, ctr) = ...
-            sum(wordsurp_encoding.sp_wordsurp_pval(idx)<thresh)/sum(idx);
+            sum(wordsurp_encoding.sp_wordsurp_pval(idx)<pthresh)/sum(idx);
         native_unfamiliar_prct(2, ctr) = ...
-            sum(wordsurp_encoding.eng_wordsurp_pval(idx)<thresh)/sum(idx);
+            sum(wordsurp_encoding.eng_wordsurp_pval(idx)<pthresh)/sum(idx);
 
     elseif wordsurp_encoding.ls(find(idx, 1))==2 % English speaker
         native_unfamiliar_prct(1, ctr) = ...
-            sum(wordsurp_encoding.eng_wordsurp_pval(idx)<thresh)/sum(idx);
+            sum(wordsurp_encoding.eng_wordsurp_pval(idx)<pthresh)/sum(idx);
         native_unfamiliar_prct(2, ctr) = ...
-            sum(wordsurp_encoding.sp_wordsurp_pval(idx)<thresh)/sum(idx);
+            sum(wordsurp_encoding.sp_wordsurp_pval(idx)<pthresh)/sum(idx);
     end
+    % third column is number of electrodes
     native_unfamiliar_prct(3, ctr) = sum(idx);
     ctr=ctr+1;
 end
 
 figure;
-
 rng(2);
 sz = native_unfamiliar_prct(3, :)*2;
 jitter = rand(length(lss), 1)*0.4-0.2;
@@ -1207,84 +1084,32 @@ plot([jitter+1 jitter+2]', [native_unfamiliar_prct(1, :); ...
     native_unfamiliar_prct(2, :)], 'Color', ...
         [0.7 0.7 0.7], 'HandleVisibility', 'off');
 
-% lme model
-% tbl = table(native_unfamiliar_prct(1, :)', ones(length(lss), 1), ...
-%     native_unfamiliar_prct(3, :)', lss, 'VariableNames', ...
-%     {'prct', 'native', 'ls', 'numel'});
-% % add the unfamiliar
-% tbl = [tbl; table(native_unfamiliar_prct(2, :)', zeros(length(lss), 1), ...
-%     native_unfamiliar_prct(3, :)', lss, 'VariableNames', ...
-%     {'prct', 'native', 'ls', 'numel'})];
+% lme model stats for unpaired difference
+tbl = table(native_unfamiliar_prct(1, :)', ones(length(lss), 1), ...
+    native_unfamiliar_prct(3, :)', lss, 'VariableNames', ...
+    {'prct', 'native', 'ls', 'numel'});
+% add the unfamiliar
+tbl = [tbl; table(native_unfamiliar_prct(2, :)', zeros(length(lss), 1), ...
+    native_unfamiliar_prct(3, :)', lss, 'VariableNames', ...
+    {'prct', 'native', 'ls', 'numel'})];
+lme = fitlme(tbl, 'prct ~ native + ls + (1|numel)');
+%disp(lme);
 
-tbl = table(native_unfamiliar_prct(1, :)'-native_unfamiliar_prct(2, :)', ...
-    lss, native_unfamiliar_prct(3, :)', 'VariableNames', ...
-    {'prct', 'ls', 'numel'});
+% paired
+[p, h] = signrank(native_unfamiliar_prct(1, :), ...
+    native_unfamiliar_prct(2, :), 'Tail', 'right');
 
-lme = fitlme(tbl, 'prct ~ 1 + (1|ls) + (1|numel)');
-disp(lme);
+disp(p);
+disp(['one-tailed paired sign rank ' num2str(p) ', observations = ' ...
+    num2str(size(native_unfamiliar_prct, 2))]);
 
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
-
-%% Single subject electrode unique variance trends
-
-SID = 'EC183';
-ls = wordsurp_encoding.ls(find(strcmp(wordsurp_encoding.SID, SID), 1));
-fieldname = {'English', 'Spanish'};
-conditionLabels = {'native', 'foreign'};
-thresh = 0.001;
-
-% features = {'peakrate', 'formant', 'consonant'};
-% titles = {'PeakRate', 'Vowel Formants', 'Consonant'};
-
-features = {'wordO', 'wordF', 'wordL', 'surp'};
-titles = { 'Boundary',  'Frequency', 'Length', 'Phoneme Surprisal'};
-fields = {'eng_uv_all', 'sp_uv_all'}; 
-
-ctr = 1;
-native = cell(length(features), 1);
-sid_native = cell(length(features), 1);
-nonnative = cell(length(features), 1);
-sid_nonnative = cell(length(features), 1);
-el = cell(length(features), 1);
-hemi = cell(length(features), 1);
-
-figure; 
-for feat = features
-    index = ismember(wordsurp_details.featureOrd, feat);
-    
-    for f = 1:2 % Aggregate over English and Spanish fields
-        field = fields{f};    
-        y = wordsurp_encoding.(field)(:, index);   
-        sid_tmp = wordsurp_encoding.SID;   
-        
-        % Removing bilinguals so the comparison is more balanced
-        if (f == 1 && ismember(ls, 2)) || (f == 2 && ismember(ls, 1))
-            native = y(strcmp(SID, wordsurp_encoding.SID));  
-        elseif (f == 1 && ismember(ls, 1)) || (f == 2 && ismember(ls, 2))
-            nonnative = y(strcmp(SID, wordsurp_encoding.SID));  
-        end
-    end
-
-    % scatter plot
-    idx = native>thresh & nonnative>thresh;
-    subplot(1, length(features), ctr);
-    scatter(ones(sum(idx), 1), ...
-        native(idx), 20, 'k', 'filled', 'MarkerFaceAlpha', 0.8); hold on;
-    scatter(2*ones(sum(idx), 1), ...
-        nonnative(idx), 20, 'k', 'filled', 'MarkerFaceAlpha', 0.8);
-    % plot a line for each electrode
-    for i = find(idx)
-        plot([1 2], [native(i), nonnative(i)], 'Color', [0.7 0.7 0.7]);
-    end
-    xlim([0.5 2.5]);
-    [~, p] = ttest2(native, nonnative);
-    title(p);
-    xticks([1 2]);
-    xticklabels(conditionLabels)
-
-    ctr = ctr + 1;
-end
+% lme model stats for paired difference
+% tbl = table(native_unfamiliar_prct(1, :)'-native_unfamiliar_prct(2, :)', ...
+%     lss, native_unfamiliar_prct(3, :)', 'VariableNames', ...
+%     {'prct', 'ls', 'numel'});
+% 
+% lme = fitlme(tbl, 'prct ~ 1 + (1|ls) + (1|numel)');
+% disp(lme);
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;

@@ -2,15 +2,21 @@
 % 01.08.2022
 out_crosscomp_startup;
 
-% Note - EC202 has no STG coverage
 [~,~, bSIDs, ~] = getSIDinfo();
 SIDs = bSIDs;
-
-% load in all beta model versions
 tps = 50:55;
 
+% load word structures
+if ~exist('Dwrd', 'var')
+    load("data/Figure3/Figure3_DIMEXWrd.mat");
+end
+
+if ~exist('TDwrd', 'var')
+    load("data/Figure3/Figure3_TIMITWrd.mat");
+end
+
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+    betaInfo* *encoding* allidx fthresh Dcons *wrd* *modelnames*;
 
 %% Load in sentence responses
 
@@ -179,7 +185,7 @@ sent_encoding.swind = repmat(swind, height(sent_encoding), 1);
 sent_encoding.ewind = repmat(ewind, height(sent_encoding), 1);
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+    betaInfo* *encoding* allidx fthresh Dcons *wrd* *modelnames*;
 
 %% Percentage of overlap in electrodes in English vs. Spanish
 
@@ -195,18 +201,21 @@ for s = SIDs
         timit = timit_elecs.allidx.(SID);
         overlap(ctr) = length(intersect(dimex, timit))/length(union(dimex, timit));
         disp([SID ': ' num2str(overlap(ctr)) ' overlap, total: ' num2str(length(union(dimex, timit)))]);
+        % number of electrodes in each language
+        disp(['Dimex: ' num2str(length(dimex)) ' Timit: ' num2str(length(timit))]);
     end
     ctr=ctr+1;
 end
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+    betaInfo* *encoding* allidx fthresh Dcons *wrd* *modelnames*;
 
-%% B - Single scatter of speech responsive electrodes
+%% A - Single scatter of speech responsive electrodes
 
 imgall = load_allimgdata;   
 cols = getColorsCrossComp(6);
 titles = {'English', 'Spanish'};
+anat_counts = cell(2, 1);
 
 types = [0, 1];
 for native = types
@@ -227,7 +236,7 @@ for native = types
         if strcmp(hemi, 'lh')
             cortex = imgall.(SIDs{1}).img_mni.cortex;
         else
-            cortex = imgall.(SIDs{6}).img_mni.cortex;
+            cortex = imgall.(SIDs{4}).img_mni.cortex;
         end
     
         subplot(1, 2, ctr)
@@ -240,6 +249,7 @@ for native = types
         % find density map of native speech, lateral side
         native_xyz = [];
         native_hga = [];
+        anat_xyz = [];
     
         for si = SIDs
             sid = si{1};
@@ -247,6 +257,16 @@ for native = types
                 subject = imgall.(sid);
                 
                 if isfield(subject.img_mni, 'elecmatrix')
+
+                    if isfield(subject.img_native, 'anatomy')
+                        anat = subject.img_native.anatomy(:, 4);
+                    elseif isfield(subject.imgNative, 'anatomy')
+                        anat = subject.imgNative.anatomy(:, 4);
+                    else
+                        disp(['using mni anatomy labels... for ' sid])
+                        anat = subject.img_mni.anatomy(:, 4);
+                    end
+
                     elecmatrix = subject.img_mni.elecmatrix;             
                     ch_sid = sent_encoding.el(strcmp(sent_encoding.SID, sid));
                     ls = sent_encoding.ls(find(strcmp(sent_encoding.SID, sid), 1, 'first'));
@@ -284,10 +304,40 @@ for native = types
                     end
         
                     native_xyz = [native_xyz; elecmatrix(intersect(ch_sel, ch_sid),:)]; 
+                    anat_xyz = [anat_xyz; anat(intersect(ch_sel, ch_sid))];
                     numsid=numsid+1;
                 end
             end
-        
+        end
+
+        % anatomy overview
+        [counts, ~, ~, labels] = crosstab(anat_xyz);
+        [sorted, idx] = sort(counts, 'descend');
+        disp('Anatomy overview');
+        % maximum 4 anatomy
+        disp(['Max: ' labels{idx(1)} ' ' num2str(sorted(1))]);
+        disp(['2nd: ' labels{idx(2)} ' ' num2str(sorted(2))]);
+        disp(['3rd: ' labels{idx(3)} ' ' num2str(sorted(3))]);
+        disp(['4th: ' labels{idx(4)} ' ' num2str(sorted(4))]);
+        disp('--------------------------------------------------------');
+
+        % if anat_counts{native+1} is already a table, add to existing, otherwise make a new table
+        if istable(anat_counts{native+1})
+            % find equivalent area in table and add count
+            for i = 1:length(labels)
+                area_idx = find(strcmp(anat_counts{native+1}.area, labels(i)));
+                if ~isempty(area_idx)
+                    anat_counts{native+1}.count(area_idx) = ...
+                        anat_counts{native+1}.count(area_idx) + counts(i);
+                else
+                    anat_counts{native+1} = [anat_counts{native+1}; ...
+                        table(counts(i), labels(i), 'VariableNames', ...
+                        {'count', 'area'})];
+                end
+            end
+        else
+            anat_counts{native+1} = table(sorted, labels(idx), ...
+                'VariableNames', {'count', 'area'});
         end
     
         % number of subjects
@@ -308,17 +358,48 @@ for native = types
     sgtitle(titles{native+1});
 end
 
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+% Check the maximum size for legend
 
-%% C/D - Correlating (s)TRF weights across corpora
+% Create horizontal bar charts for speech-responsive areas
+figure;
+subplot(1, 2, 1);
+% remove areas with count < 5 and sort by count
+anat_counts{1} = anat_counts{1}(anat_counts{1}.count >= 5, :);
+anat_counts{1} = sortrows(anat_counts{1}, 'count', 'descend');
+barh(anat_counts{1}.area, anat_counts{1}.count, 'FaceColor', ...
+    cols(1, :), 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Red color for non-native
+title(titles{1});
+xlabel('Count');
+ylabel('Anatomical Area');
+set(gca, 'FontSize', 14);
+box off;
+xlim([0, 310]);
+
+subplot(1, 2, 2);
+% remove areas with count < 5 and sort by count
+anat_counts{2} = anat_counts{2}(anat_counts{2}.count >= 5, :);
+anat_counts{2} = sortrows(anat_counts{2}, 'count', 'descend');
+barh(anat_counts{2}.area, anat_counts{2}.count, 'FaceColor', ...
+    cols(2, :), 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Blue color for native
+title(titles{2});
+xlabel('Count');
+ylabel('Anatomical Area');
+set(gca, 'FontSize', 14);
+sgtitle('Speech-responsive areas');
+box off;
+xlim([0, 310]);
+
+
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    betaInfo* *encoding* allidx fthresh Dcons *wrd* *modelnames*;
+
+%% B/C - Correlating (s)TRF weights across corpora
 
 corpora = {{'timit', 'dimex'}};
 %modelnames = {'onset_aud'};
 modelnames = {'onset_phnfeatConsOnset_maxDtL_formantMedOnset'};
 
 % consonant feature overlap for mandarin and english
-
 timit_feats = timit_details.features.names([1:3, 8, 9, 11]);
 % shared_feats = intersect(timit_feats, asccd_feats);
 % timit_fidx = [1; 1+cellfun(@(x) find(strcmp(timit_feats, x)), shared_feats); ...
@@ -336,13 +417,15 @@ thresh = 0.01;
 windsz = 3;
 
 colors = flipud(brewermap(20, 'Spectral'));
-cols = [colors(3, :); colors(end-2, :); colors(round(size(colors, 1)/2), :)];
+% cols = [colors(3, :); colors(end-2, :); 
+%     colors(round(size(colors, 1)/2), :)];
 
 % all windowed TRF weights
 alleng = nan(height(sent_encoding), 80);
 allsp = nan(height(sent_encoding), 80); % maximum feat length
 
 SIDs =  unique(sent_encoding.SID)';
+
 % remove subjects where information not completely loaded
 SIDs(ismember(SIDs, {'EC282', 'EC296'})) = [];
 
@@ -423,7 +506,8 @@ for s = SIDs
             % calculate the permutation correlation
             for j = 1:10
                 rng(1);
-                [corrstrfperm(e, j), ~] = corr(x', z(randperm(length(z))), 'type', 'Pearson');
+                [corrstrfperm(e, j), ~] = corr(x', z(randperm(length(z))), ...
+                    'type', 'Pearson');
             end
 
             % save out max R^2 and min R^2
@@ -533,7 +617,7 @@ clim([-1 1]);
 box off;
 
 [corrval, pval] = corr(allsp(:), alleng(:));
-disp(['Correlation between beta matrices: ' num2str(corrval) ', ' num2str(pval)]);
+disp(['Pearson r(' num2str(length(allsp(:))) '): ' num2str(corrval) ', p = ' num2str(pval)]);
 
 % add xlines where max feature changes (1 to 2, 7 to 8, 8 to 9)
 sidx = maxidx(idx, 1);
@@ -569,89 +653,112 @@ yticklabels([{'onset'} timit_feats' {'peakrate', 'F1', 'F2', 'F3', 'F4'}]);
 
 % show histogram of correlations
 figure;
+% lower threshold in Fig. 1, fewer participants
 idx = minrsq>0.05;
 hbins = -1:0.05:1;
 % permutation distribution
-% idx = minrsq>0.1;
 corrstrfperm(~idx, :) = NaN;
+corrstrfperm(isnan(corrstrfperm)) = [];
+
 histogram(corrstrfperm(:), hbins, 'EdgeColor', 'none', ...
-    'FaceColor', [0.7, 0.7, 0.7], 'FaceAlpha', 0.5, 'Normalization','probability');
+    'FaceColor', [0.7, 0.7, 0.7], 'FaceAlpha', 0.3, ...
+    'Normalization','pdf');
 hold on;
 % make a kdensity plot
-yyaxis right; 
 [f, xi] = ksdensity(corrstrfperm(:));
-plot(xi, f, 'LineWidth', 2, 'Color', [0.7, 0.7, 0.7]);
+plot(xi, f, 'LineWidth', 2, 'Color', [0.7, 0.7, 0.7], 'LineWidth', 3, ...
+    'LineStyle', '-');
+yticks(0:1:2);
 
-yyaxis left; 
-histogram(corrstrf(idx), hbins, 'EdgeColor', 'none', ...
-    'FaceColor', [0.7, 0.1, 0.7], 'FaceAlpha', 0.5, 'Normalization', 'probability');
-hold on;
-[f, xi] = ksdensity(corrstrf(idx));
 yyaxis right; 
-plot(xi, f, 'LineWidth', 2, 'Color', [0.7, 0.1, 0.7]);
-xline(prctile(corrstrfperm(:), 95), 'LineWidth', 2, 'Color', 'k');
+histogram(corrstrf(idx), hbins, 'EdgeColor', 'none', ...
+    'FaceColor', [0.7, 0.1, 0.7], 'FaceAlpha', 0.3, ...
+    'Normalization', 'pdf');
+hold on;
+[f, xi] = ksdensity(corrstrf(idx)); 
+plot(xi, f, 'LineWidth', 2, 'Color', [0.7, 0.1, 0.7], 'LineWidth', 3, ...
+    'LineStyle', '-');
+
+stathresh = (0.05)*100;
+corrstrfperm(isnan(corrstrfperm)) = [];
+xline(prctile(corrstrfperm(:), 100-stathresh), 'LineWidth', ...
+    2, 'Color', 'k');
 xlim([-1 1]);
+yticks(0:2:6);
+ax = gca();
+ax.YAxis(2).TickLabelColor = [0.7, 0.1, 0.7]; 
+ax.YAxis(2).Color = [0.7, 0.1, 0.7]; 
+% ax.YAxis(2).
 
-yticks([]);
+% yticks([]);
 yyaxis left;
-ylabel('Normalized Density');
+ylabel('Probability Density');
 box off;
+set(gca, 'FontSize', 13);
 
-disp(sum(corrstrf(idx)>prctile(corrstrfperm(:), 95)))
-disp(sum(idx))
-disp(sum(corrstrf(idx)>prctile(corrstrfperm(:), 95))/sum(idx))
+disp(['Total number of electrodes: ' num2str(sum(idx))])
+disp(['Number of electrodes with higher than 95% for permuted distrib: ' ...
+    num2str(sum(corrstrf(idx)>prctile(corrstrfperm(:), 100-stathresh)))]);
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd* corrstrf corrpval maxrsq;
+    betaInfo* *encoding* allidx fthresh Dcons *wrd* corrstrf corrpval maxrsq *modelnames*;
 
 %% Load in unique variance
 
-% using phonetic feature instead of splitting by vowel
-modelnames_timit={'phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ...%remove onset
-    'onset_maxDtL_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ... %remove consonant features        
-    'onset_phnfeatConsOnset_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ... %remove peakrate
-    'onset_phnfeatConsOnset_maxDtL_wordOns_wordL_engSurpNoOnsBin', ... %remove formant
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset', ... %remove word feat/base
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL', ... % remove surprise
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_engSurpNoOnsBin', ... % remove word only
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_engSurpNoOnsBin', ... % full
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns', ... % remove surprise and length
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordFreqLog'}; 
-%'onset_phnfeatConsOnset_maxDtL_formantMedOnset_engSurpNoOnsBin', ... %remove word
-
-modelnames_dimex={'phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ...%remove onset
-    'onset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ... %remove consonant features        
-    'onset_phnfeatConsOnset_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ... %remove peakrate
-    'onset_phnfeatConsOnset_maxDtL_wordOns_wordL_spSurpNoOnsBin', ... %remove formant
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset', ... %remove word feat/base
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL', ... % remove surprise
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_spSurpNoOnsBin', ... % remove word only
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ... % full
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns', ... % remove surprise and length
-    'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordFreqLog'}; 
-
 [wordsurp_encoding] = loadUniqueVarTbl(modelnames_timit, modelnames_dimex, [bSIDs eSIDs, sSIDs]);
 wordsurp_details.featureOrd ...
-    = {'onset', 'peakrate', 'formant', 'consonant', 'word+surp', 'word', 'surp', 'wordO', 'wordL', 'wordF'};
+    = {'onset', 'peakrate', 'formant', 'consonant', 'word+surp', 'word', ...
+    'surp', 'wordO', 'wordL', 'wordF', 'bisurp', 'trisurp', 'pitch', 'env'};
 imgall = load_allimgdata;
 wordsurp_encoding.hemi = cellfun(@(x) imgall.(x).hemi, ...
     wordsurp_encoding.SID, 'UniformOutput', false);
 wordsurp_details.models_dimex = modelnames_dimex;
 wordsurp_details.models_timit = modelnames_timit;
 
+% load in p-values from permutation testing
+sp_wordsurp_pval = nan(1, height(wordsurp_encoding));
+en_wordsurp_pval = nan(1, height(wordsurp_encoding));
+prefix = 'onset_phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_';
+permodel = {[ prefix 'engSurpNoOnsBin_wordFreqLog'], ...
+    [prefix 'spSurpNoOnsBin_wordFreqLog']};
+for s = unique(wordsurp_encoding.SID)'
+    SID = s{1};
+    idx = strcmp(wordsurp_encoding.SID, SID);
+    elidx = wordsurp_encoding.el(idx);
+
+    for c = 1:2 %{'timit', 'dimex'}
+        pvalpath=fullfile(datapath, 'permTest_wordSurp', SID); % c{1}, 
+        cmod=dir(fullfile(pvalpath, '*_zX*_*mat')); 
+        permidx = find(contains({cmod.name}, permodel{c}));
+        permfname=cmod(permidx).name;
+
+        % load pvalues from permutation testing
+        pvals = load(fullfile(pvalpath, permfname), 'pval');
+        pvals = pvals.pval;
+        
+        if c==1 % strcmp(c{1}, 'timit')
+            en_wordsurp_pval(idx) = pvals(elidx);
+        else
+            sp_wordsurp_pval(idx) = pvals(elidx);
+        end
+    end
+end
+wordsurp_encoding.sp_wordsurp_pval = sp_wordsurp_pval';
+wordsurp_encoding.eng_wordsurp_pval = en_wordsurp_pval';
+
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
 
-%% E - English vs. Spanish: word / sequence surprisal unique variance (box-plots)
+%% D - English vs. Spanish: word / sequence surprisal unique variance (box-plots)
 
 % Compare unique variance between languages
 rsq_thresh = 0.05;
 idx = (wordsurp_encoding.eng_base_rsq>rsq_thresh& wordsurp_encoding.sp_base_rsq>rsq_thresh);
-wordsurp_encoding = wordsurp_encoding(idx, :);
+wordsurp_encoding_thresh = wordsurp_encoding(idx, :);
 
 % field = {'eng_rsq_surprisal', 'sp_rsq_surprisal'}; 
 % field = {'eng_uv_phnfeat', 'sp_uv_phnfeat'}; 
-fieldname = {'English', 'Spanish'};
+
 conditionLabels = {'English', 'Spanish'};
 thresh = 0.001;
 
@@ -668,7 +775,7 @@ fields = {'eng_uv_all', 'sp_uv_all'};
 cols = getColorsCrossComp(6);
 
 [proficiency] = getBilingProf();
-profield = {'eng_prof', 'span_prof'};
+% profield = {'eng_prof', 'span_prof'};
 
 % two primary proficiency profiles (high eng, low span and vice versa)
 hsle = proficiency.SID(proficiency.span_prof>4 & proficiency.eng_prof<5);
@@ -678,10 +785,10 @@ figure('Renderer', 'Painters');
 ctr = 1;
 for feat = features
     index = ismember(wordsurp_details.featureOrd, feat);
-    bidx = wordsurp_encoding.ls==4; %& ismember(wordsurp_encoding.SID, lshe);
+    bidx = wordsurp_encoding_thresh.ls==4; %& ismember(wordsurp_encoding.SID, lshe);
 
-    eng_uv = wordsurp_encoding.(fields{1})(bidx, index);
-    sp_uv = wordsurp_encoding.(fields{2})(bidx, index);
+    eng_uv = wordsurp_encoding_thresh.(fields{1})(bidx, index);
+    sp_uv = wordsurp_encoding_thresh.(fields{2})(bidx, index);
    
     % Combining native and unfamiliar subjects  
     % subplot(1, length(titles), ctr)
@@ -709,9 +816,9 @@ for feat = features
     % Statistical testing with linear mixed effect model
     tbl=table();
     tbl.rsq = [eng_uv; sp_uv];
-    tbl.sid = [wordsurp_encoding.SID(bidx); wordsurp_encoding.SID(bidx)];
-    tbl.elec = [wordsurp_encoding.el(bidx); wordsurp_encoding.el(bidx)];
-    tbl.hemi = [wordsurp_encoding.hemi(bidx); wordsurp_encoding.hemi(bidx)];
+    tbl.sid = [wordsurp_encoding_thresh.SID(bidx); wordsurp_encoding_thresh.SID(bidx)];
+    tbl.elec = [wordsurp_encoding_thresh.el(bidx); wordsurp_encoding_thresh.el(bidx)];
+    tbl.hemi = [wordsurp_encoding_thresh.hemi(bidx); wordsurp_encoding_thresh.hemi(bidx)];
     tbl.lang = [ones(length(eng_uv), 1); ones(length(sp_uv), 1)*2]; % english and spanish
 
     lme2 = fitlme(tbl(tbl.rsq>0, :),'rsq~lang+(1|hemi)+(1|sid)+(1|elec:sid)');
@@ -728,7 +835,7 @@ for feat = features
     end
     %title(titles{ctr});
     set(gca, 'FontSize', 13);
-    ylabel('\Delta R^2');
+    ylabel('\Delta R^2 (log)');
 
     ctr=ctr+1;
 end
@@ -740,11 +847,11 @@ legend({'English', 'Spanish'});
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd* corrstrf corrpval maxrsq;
-%% F - Monolingual vs. Bilingual: word / sequence surprisal unique variance (box-plots)
+%% E - Monolingual vs. Bilingual: word / sequence surprisal unique variance (box-plots)
 
 rsq_thresh = 0.05;
 idx = (wordsurp_encoding.eng_base_rsq>rsq_thresh& wordsurp_encoding.sp_base_rsq>rsq_thresh);
-wordsurp_encoding = wordsurp_encoding(idx, :);
+wordsurp_encoding_thresh = wordsurp_encoding(idx, :);
 
 % field = {'eng_rsq_surprisal', 'sp_rsq_surprisal'}; 
 % field = {'eng_uv_phnfeat', 'sp_uv_phnfeat'}; 
@@ -788,30 +895,30 @@ for feat = features
 
     for f = 1:2 % Aggregate over English and Spanish fields
         field = fields{f};    
-        y = wordsurp_encoding.(field)(:, index);   
-        sid_tmp = wordsurp_encoding.SID; 
+        y = wordsurp_encoding_thresh.(field)(:, index);   
+        sid_tmp = wordsurp_encoding_thresh.SID; 
         
         % Removing bilinguals so the comparison is more balanced
         if f == 1 
-            mono{ctr} = [mono{ctr}; y(ismember(wordsurp_encoding.ls, 2))];  
-            sid{ctr} = [sid{ctr}; sid_tmp(ismember(wordsurp_encoding.ls, 2))];
-            el{ctr} = [el{ctr}; wordsurp_encoding.el(wordsurp_encoding.ls==2)];
-            hemi{ctr} = [hemi{ctr}; wordsurp_encoding.hemi(wordsurp_encoding.ls==2)];
+            mono{ctr} = [mono{ctr}; y(ismember(wordsurp_encoding_thresh.ls, 2))];  
+            sid{ctr} = [sid{ctr}; sid_tmp(ismember(wordsurp_encoding_thresh.ls, 2))];
+            el{ctr} = [el{ctr}; wordsurp_encoding_thresh.el(wordsurp_encoding_thresh.ls==2)];
+            hemi{ctr} = [hemi{ctr}; wordsurp_encoding_thresh.hemi(wordsurp_encoding_thresh.ls==2)];
         else
-            mono{ctr} = [mono{ctr}; y(ismember(wordsurp_encoding.ls, 1))];  
-            sid{ctr} = [sid{ctr}; sid_tmp(ismember(wordsurp_encoding.ls, 1))];
-            el{ctr} = [el{ctr}; wordsurp_encoding.el(wordsurp_encoding.ls==1)];
-            hemi{ctr} = [hemi{ctr}; wordsurp_encoding.hemi(wordsurp_encoding.ls==1)];
+            mono{ctr} = [mono{ctr}; y(ismember(wordsurp_encoding_thresh.ls, 1))];  
+            sid{ctr} = [sid{ctr}; sid_tmp(ismember(wordsurp_encoding_thresh.ls, 1))];
+            el{ctr} = [el{ctr}; wordsurp_encoding_thresh.el(wordsurp_encoding_thresh.ls==1)];
+            hemi{ctr} = [hemi{ctr}; wordsurp_encoding_thresh.hemi(wordsurp_encoding_thresh.ls==1)];
         end
 
         % subset to bilinguals with full proficiency    
         profSIDs = [proficiency.SID(proficiency.(profield{f})==5)];
-        fullprof_biling = wordsurp_encoding.ls==4 & ...
-            ismember(wordsurp_encoding.SID, profSIDs);
+        fullprof_biling = wordsurp_encoding_thresh.ls==4 & ...
+            ismember(wordsurp_encoding_thresh.SID, profSIDs);
         bil{ctr} = [bil{ctr}; y(fullprof_biling)];
         sid{ctr} = [sid{ctr}; sid_tmp(fullprof_biling)];
-        el{ctr} = [el{ctr}; wordsurp_encoding.el(fullprof_biling)];
-        hemi{ctr} = [hemi{ctr}; wordsurp_encoding.hemi(fullprof_biling)];
+        el{ctr} = [el{ctr}; wordsurp_encoding_thresh.el(fullprof_biling)];
+        hemi{ctr} = [hemi{ctr}; wordsurp_encoding_thresh.hemi(fullprof_biling)];
 
     end
     ctr = ctr + 1;
@@ -875,7 +982,7 @@ for s = 1:length(subplts)
     lme2 = fitlme(tbl(tbl.rsq>0, :),'rsq~native+(1|hemi)+(1|sid)+(1|elec:sid)');
 
     disp(titles{s})
-    disp(lme2)
+    disp(lme2.Coefficients(2, :))
     p = lme2.Coefficients.pValue(2);
 
     disp(['LME mono / bilingual p-value = ' num2str(p)])
@@ -887,7 +994,7 @@ for s = 1:length(subplts)
     end
     %title(titles{s});
     set(gca, 'FontSize', 13);
-    ylabel('\Delta R^2')
+    ylabel('\Delta R^2 (log)');
 end
 legend({'monolingual', 'bilingual'});
 xlim([0.5 1.5*length(subplts)+0.5]);
@@ -897,7 +1004,7 @@ xticklabels(titles);
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd* corrstrf corrpval maxrsq;
 
-%% E - Word boundary ERPs
+%% F - Word boundary ERPs
 
 f = figure; 
 
@@ -905,9 +1012,11 @@ f = figure;
 % EC163 - el55
 SIDs = {'EC260'};% 'EC100', 'EC100', 'EC100','EC100'};
 els = 221;%,135, 22, 70, 71, 150]; %236, 205 for EC260, 178, 175
-% Dwrd = loadDwrdMulti('dimex',  20, 50, SIDs, dimex_details);
-% TDwrd = loadDwrdMulti('timit', 20, 50, SIDs, timit_details);
+
+Dwrd = loadDwrdMulti('dimex',  20, 50, SIDs, dimex_details);
+TDwrd = loadDwrdMulti('timit', 20, 50, SIDs, timit_details);
 xdata = -0.2:0.01:0.5;
+uv_thresh = 0.001;
 
 plotSingleTrial = 0;
 numel = length(els);
@@ -953,7 +1062,7 @@ for s = 1:2
         colormap(flipud(cm(1:200, :)))
         % ylim([0 1.3]);
         ylim([-0.5 0.8]);
-        xlim([-0.2, 0.4]);
+        xlim([-0.2, 0.3]);
         h=xline(0);
         h.Color = 'k';
         legend('off');
@@ -1056,7 +1165,8 @@ for lang = 1:2
         %     length(desel.conds)-1);
 
         % Construct manual, non-linear edges
-        binedges = [-1 0.0005:0.005:0.01 0.015:0.015:0.1];
+        %binedges = [-1 0.000:0.005:0.01 0.015:0.015:0.1];
+        binedges = [-1 uv_thresh:0.01:0.1];
         for s=unique(wordsurp_encoding.SID)'
             SID = s{1};
             idx = strcmp(wordsurp_encoding.SID, SID);
@@ -1227,7 +1337,7 @@ quads = rot90(histcounts2(x_all, y_all, [-100 0 100], [-100 0 100]));
 imagesc(quads);
 % change the colormap of this axis
 colormap(ax, flipud(gray));
-%colormap([1 1 1; 1 0 0; 1 0 1;0 0 1])
+% colormap([1 1 1; 1 0 0; 1 0 1;0 0 1])
 % add in the text overlaid
 quads = flipud(rot90(quads));
 for x = 1:2
@@ -1242,213 +1352,410 @@ xticklabels({'-UV', '+UV'});
 yticklabels({'+UV', '-UV'});
 
 % add the number of elecs in each quadrant
+%% G - Bilingual uv as scatter v2
 
-%% ----------------------- Supplementary Figures --------------------------
 
-%% Showing word boundary decoding comparing monolingual and bilinguals
+% Specify the labels for analysis
+labels = {'word+surp'};
 
-% load Wrd structures
-% loading in word-level subject data
-TDwrd = loadDwrdMulti('timit', bef, aft, [], timit_details);
-Dwrd = loadDwrdMulti('dimex',  bef, aft, [], dimex_details);
+% Create a figure for the scatter plots
+figure('Position', [200, 100, 900, 900]);
 
-figure('Position', [100, 300, 150, 300], 'renderer', 'painters');
-Swrds = {Dwrd, TDwrd};
-decode_type = 'word'; 
-ctr=1;
-for s = Swrds
-    Swrd = s{1};
-    time_label = '600ms';
-    % time_label = '10ms-sliding';
+% Set a UV threshold for filtering
+uv_thresh = 0.001;
+pval_thresh = 0.05;
 
-    lss = [1, 2, 4];
-    type = '';
-    colors = getColorsCrossComp(1);
-    
-    switch time_label
-        case '10ms-sliding'
-            accls = nan(4, 13, 20);
-        otherwise
-            accls = nan(4, 20);
-    end 
-    
-    subplot(2, 1, ctr)
-    
-    for ls = lss
-        if ls == 4
-            subj = 'bilingual';
-        else
-            subj = 'monolingual';
-        end
-    
-        if startsWith(Swrd.sentid{1}, 's')
-            corpus = 'DIMEX';
-        else
-            corpus = 'TIMIT';
-        end
-        
-        filename =  [corpus '_' decode_type '_decode_' subj '_' time_label type '.mat']; 
-        load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
-    
-        styles = {':', '-', '', '-'};    
-        switch time_label
-            case '10ms-sliding'
-                accls(ls, :, :) = squeeze(decode_details.AUC(ls, :, :));
-            otherwise
-                accls(ls, :) = squeeze(decode_details.AUC(ls, :, :));
-        end 
-    end
-    
-    % if using sliding window use maximum timepoint across subject groups
-    if strcmp(time_label, '10ms-sliding')
-        [~, maxtp] = max(mean(accls, [1 3], 'omitnan'));
-        accls = squeeze(mean(accls(:, maxtp-4: maxtp+4, :), 2));
-    end
-    
-    if ctr == 1 % dimex
-        position = [1, 4, 0, 2];
-    else
-        position = [4, 1, 0, 2];
-    end
+% Initialize subplot counter and axis array
+ctr = 1;
+ax = nan(3, 1);
 
-    for ls = lss
-        h=boxchart(ones(size(accls, 2), 1)*position(ls), ...
-            accls(ls, :)*100, 'BoxFaceColor', colors(ls, :)); 
-        h.JitterOutliers = 'on';
-        h.MarkerStyle = '.';
-        h.MarkerColor = colors(ls, :);
-        hold on; % 'BoxStyle', 'filled'
-    end  
+cols = getColorsCrossComp(6);
+% cols = [256 256 256; 28 117 188; 8 70 128;]./256;
+% make a patch in the lower right quadrant thats light red
+patch([0 0 0.08 0.08], [-0.02 0.08 0.08 -0.02], cols(1, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35);
+% make a patch in the upper left quadrant thats light blue
+patch([0.08 0.08 -0.02 -0.02], [0 0.08 0.08 0], cols(2, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35); hold on;
+%patch([0 0 -0.01 -0.01], [0 0.08 0.08 0], cols(2, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35);
 
-    xticks();
-    xlim([0.5 4.5]);
-    legend('off');
+% Iterate over the labels
+for label = labels
+    x_all = [];
+    y_all = [];
     
-    %pos = [1, 2; 1, 3; 2, 3;];
-    combo = [1, 2; 1, 4; 2, 4;];
-    pos = nan(size(combo, 1), size(combo, 2));
-    for r = 1:size(combo, 2)
-        for c = 1:size(combo, 1)
-            pos(c, r) = position(combo(c, r));
-        end
-    end
+    % Find the index of the current label in the featureOrd array
+    index = find(ismember(wordsurp_details.featureOrd, label));
+    
+    % Iterate over the ls values
+    ls = 4;
 
-    for i = 1:3        
-        [h, p] = ttest2(accls(combo(i, 1), :), accls(combo(i, 2), :));
-        if ~isempty(getSigStr(p))
-            plot([pos(i, 1)-0.02 pos(i, 2)+0.02], ...
-                [70+5*i 70+5*i], 'LineWidth', 1.5, 'Color', 'k');
-            text(mean(pos(i, :))-0.25, 70+5*i+1, getSigStr(p, 2), 'FontSize', 15);
-        end
-    end
+    % Create a subplot for the current label and ls value
+    ax(ctr) = subplot(length(labels), 1, ctr);
+    lsidx = wordsurp_encoding.ls==ls;
     
-    % for sliding window
-    % labels = startp+round(decode_details.timing(1)/2)-startp(1);
-    % xticklabels(split(num2str(labels*10)));
+    % Get the corresponding unique variance values for English and Spanish
+    x = wordsurp_encoding.eng_uv_all(lsidx, index);
+    y = wordsurp_encoding.sp_uv_all(lsidx, index);
+    pvals_x = wordsurp_encoding.eng_wordsurp_pval(lsidx);
+    pvals_y = wordsurp_encoding.sp_wordsurp_pval(lsidx);
     
-    yticks();
-    yline(0.5, 'Color', 'k');
-   
-    ylim([48 90]);
-    ylabel('AUC')    
-    set(gca, 'FontSize', 15);
-    box off;
-    ctr = ctr+1;
+    % Get the subject IDs for the current ls value
+    sid = cellfun(@(x) str2double(x(3:end)), ...
+        wordsurp_encoding.SID(wordsurp_encoding.ls==ls));
+    
+    % Remove data points that do not meet the UV threshold or contain NaN values
+    % all([x,y]<uv_thresh, 2)
+    neg = any([pvals_x,pvals_y]>pval_thresh, 2) | isnan(x) | isnan(y);
+    %neg = all([x,y]<uv_thresh, 2) | isnan(x) | isnan(y);
+    x(neg) = [];
+    y(neg) = [];
+    sid(neg) = [];
+
+    % Perform permutation testing to compute correlation coefficient and p-value
+    maxlim = prctile([x; y], 100);
+    minlim = prctile([x; y], 3);  
+
+    % Plot the scatter plot
+    colors = x-y;
+    x_all = [x_all; x];
+    y_all = [y_all; y];
+    %scatter3(x, y, sid, 20, colors, 'filled', ...
+    %            'MarkerEdgeColor', 'k', 'MarkerFaceAlpha', 0.8); hold on;
+    
+    scatter(x, y, 15, colors, 'filled', ...
+                'MarkerEdgeColor', 'k', ...
+                'MarkerFaceAlpha', 0.8, ...
+                'LineWidth', 0.25); hold on;
+    
+    % colorbar should be blue to red going through white (1, 1, 1)
+    % first create blue to white
+    cols = [linspace(43/256, 1, 50); linspace(122/256, 1, 50); linspace(186/256, 1, 50)]';
+    % then add white to red
+    cols = [cols; [linspace(1, 213/256, 50); linspace(1, 37/256, 50); ...
+        linspace(1, 39/256, 50)]'];
+
+    colormap(cols);
+    clim([-0.05 0.05]);
+    view(2);
+    
+    % Set the x and y axis limits and add labels
+    xlim([minlim maxlim]);
+    ylim([minlim maxlim]);
+    xlabel(['English ' label{1} ' \Delta R^2']);
+    ylabel(['Spanish ' label{1} ' \Delta R^2']);
+
+    [r, p] = corr(x_all(x_all>0&y_all>0), y_all(x_all>0&y_all>0), 'Rows', ...
+        'complete', 'type', 'Spearman');
+    title({['r= (' num2str(sum(x_all>0&y_all>0)) '),' num2str(r)], ['p=' num2str(p, 4)]});
+     % Increment the subplot counter
+    ctr = ctr + 1; 
+    hold on;
 end
 
-%formatting
-xticks([1 2 4]);
-xlabel('Subject Group');
-xticklabels({'Monolingual', 'Bilingual'});
+% Link axes for phonetic features and word onset/surp
+linkaxes(ax(1:length(labels)));
+h = refline(1, 0);
+set(gca, 'FontSize', 15);
+
+% Add reference lines and lines at 0
+for i = 1:length(labels)
+    subplot(length(labels), 1, i);
+    xline(0, 'Color', 'k', 'LineWidth', 1.5);
+    yline(0, 'Color', 'k', 'LineWidth', 1.5);
+    xlim([-0.02 0.065]);
+    ylim([-0.02 0.065])
+    xticks([0 0.08]);
+    yticks([0 0.08]);
+    h = refline(1, 0);
+    h.LineWidth = 2;
+    h.Color = 'k';
+    % make colors all black
+    colormap(repmat([0 0 0], 256, 1));
+end
+
+% add inlaid quadrant count on the top right corner
+% add a inlaid quadrant plot
+ax = axes('Position',[.65 .65 .3 .3]);
+quads = rot90(histcounts2(x_all, y_all, [-100 0 100], [-100 0 100]));
+
+imagesc([1, 3; 0, 2]);
+% change the colormap of this axis
+cols = getColorsCrossComp(6);
+cols = [1 1 1; cols(2, :); cols(1, :); mean(cols)];
+cols = brighten(cols, 0.8);
+colormap(ax, cols);
+
+% colormap(ax, flipud(gray));
+%colormap([1 1 1; 1 0 0; 1 0 1;0 0 1])
+% add in the text overlaid
+quads = flipud(rot90(quads));
+for x = 1:2
+    for y = 1:2
+        text(x, y, num2str(quads(x, y)), 'Color', 'k', ...
+            'FontSize', 16, 'HorizontalAlignment', 'center');
+    end
+end
+box off;
+xticks([1 2]);
+yticks([1 2]);
+xticklabels({'-UV', '+UV'});
+yticklabels({'+UV', '-UV'});
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
 
-%% Scatter of all coverage 
-
-figure;
-set(gcf,'Color','w');
-
-ha = axes;
-hemi = 'rh';
-hold on
-
-if strcmp(hemi, 'lh')
-    x_add = -20;
-else
-    x_add = 10;
-end
 
 
-imgall = load_allimgdata;
-cmax = 2;
+%% ----------------------- Supplementary Figures --------------------------
 
-numsid = 0;      
+%% S2 - Coverage of electrodes across anatomical regions 
 
-if strcmp(hemi, 'lh')
-    cortex = imgall.(SIDs{1}).img_mni.cortex;
-else
-    cortex = imgall.(SIDs{6}).img_mni.cortex;
-end
+SIDs = bSIDs;
+dimex_elecs = load('select_elec/out_elecs_speechtypeftest_bychan_dimex_all.mat');
+timit_elecs = load('select_elec/out_elecs_speechtypeftest_bychan_timit_all.mat');
+asccd_elecs = load('select_elec/out_elecs_speechtypeftest_bychan_asccd_all.mat');
 
-subplot(1, 2, 1);
-PlotBrainSurface(cortex, hemi,'lateral');
-alpha 0.9
-light("Style","infinite","Position",[100 100 0]);
+all_elecs = {dimex_elecs, timit_elecs, asccd_elecs};
 
-% find density map of native speech, lateral side
-native_xyz = [];
-native_hga = [];
-all_xyz = [];
-anatomy = [];
+label_ord = {'middletemporal', 'superiortemporal', 'supramarginal', 'precentral', ...
+    'postcentral', 'inferiorparietal', 'inferiortemporal', 'lateralorbitofrontal', ...
+    'parstriangularis', 'fusiform', 'caudalmiddlefrontal', 'parsopercularis', ...
+    'rostralmiddlefrontal', 'lateraloccipital', 'temporalpole'};
+label_tick = {'middletemp', 'superiortemp', 'supramarg', 'precent', 'postcent', ...
+    'infpar', 'inftemp', 'latorbfront', 'parstriang', 'fusif', 'caudmidfront', 'parsoperc', ...
+    'rostmidfront', 'latocc', 'temppole'};
 
-for si = SIDs
-    sid = si{1};
-    if strcmpi(imgall.(sid).hemi,hemi)
-        subject = imgall.(sid);
-        
-        if isfield(subject.img_mni, 'elecmatrix')
-            elecmatrix = subject.img_mni.elecmatrix; 
-            anatomy = [anatomy; subject.img_mni.anatomy];  
-            all_xyz = [all_xyz; elecmatrix]; 
-            numsid=numsid+1;
+for h = {'lh', 'rh'}
+    figure;
+    set(gcf,'Color','w');
+    axes;
+    hold on;
+    cmax = 2;
+
+    hemi = h{1};
+    if strcmp(hemi, 'lh')
+        x_add = -20;
+    else
+        x_add = 10;
+    end
+    
+    numsid = 0;      
+    if strcmp(hemi, 'lh')
+        cortex = imgall.(SIDs{1}).img_mni.cortex;
+    else
+        cortex = imgall.(SIDs{3}).img_mni.cortex;
+    end
+    
+    % find density map of native speech, lateral side
+    native_xyz = [];
+    native_hga = [];
+    all_xyz = [];
+    anatomy = [];
+    speech_resp = [];
+    for si = SIDs
+        sid = si{1};
+        if strcmpi(imgall.(sid).hemi,hemi)
+            subject = imgall.(sid);
+            
+            if isfield(subject.img_mni, 'elecmatrix')
+                elecmatrix = subject.img_mni.elecmatrix; 
+                numel = size(elecmatrix, 1);
+                all_xyz = [all_xyz; elecmatrix]; 
+
+                % note speech responsive (union electrodes)
+                speech_resp_tmp = zeros(size(elecmatrix, 1), 1);
+                for j = 1:length(all_elecs)
+                    if isfield(all_elecs{j}.allidx, sid)
+                        speech_resp_tmp(all_elecs{j}.allidx.(sid)) = 1;
+                    end
+                end
+                
+                if isfield(subject.img_native, 'anatomy')
+                    anatomy =[anatomy; subject.img_native.anatomy(1:numel, 4)];
+                elseif isfield(subject.imgNative, 'anatomy')
+                    anatomy = [anatomy; subject.imgNative.anatomy(1:numel, 4)];
+                else
+                    disp(['using mni anatomy labels... for ' sid])
+                    anatomy = [anatomy; subject.img_mni.anatomy(1:numel, 4)];
+                end
+                speech_resp = [speech_resp; speech_resp_tmp];
+                numsid=numsid+1;
+            else
+                disp(['Missing...' sid]);
+            end
         end
     end
 
+    subplot(2, 1, 1);
+    PlotBrainSurface(cortex, hemi,'lateral');
+    alpha 0.9
+    light("Style","infinite","Position",[100 100 0]);
+    yl = ylim;
+    zl = zlim;
+
+    % number of subjects
+    disp(['Number of subjects: '  num2str(numsid)]);
+    disp(['Number of electrodes: '  num2str(length(all_xyz))]);
+    disp('--------------------------------------------------------');
+    scatter3(all_xyz(:, 1)+x_add, all_xyz(:, 2), all_xyz(:, 3), 3, 'k', 'filled');
+    zlim(zl); ylim(yl);
+
+    % Generate coverage contour
+    ha = subplot(2, 1, 2);
+    PlotBrainSurface(cortex, hemi,'lateral');
+    alpha 0.4
+    light("Style","infinite","Position",[100 100 0]);
+    drawBrainContour(ha, all_xyz, hemi, cmax);
+    disp(numsid);
+   
+
+    % remove NaN and Unknown, Right-Cerebral-WhiteMatter
+    torem = {'NaN', 'Unknown', 'Right-Cerebral-White-Matter', ...
+                'Left-Cerebral-White-Matter', 'Left-Hippocampus', ...
+                'Right-Hippocampus'};
+    % remove all cases where coveage < 20
+    mincount = 20;
+
+    [counts, ~, ~, labels] = crosstab(anatomy, speech_resp);
+    labels = labels(:, 1);
+
+    % remove all cases where coverage < 20
+    labels = labels(sum(counts, 2)>mincount);
+    counts = counts(sum(counts, 2)>mincount, :);
+    
+    % remove NaN and Unknown, Right-Cerebral-WhiteMatter
+    counts = counts(~ismember(labels, torem), :);
+    labels = labels(~ismember(labels, torem));
+    
+    idx_cell = cellfun(@(x) find(ismember(labels, x)), ...
+        label_ord, 'UniformOutput', false);
+    counts_reord = nan(length(label_ord), 2);
+    for i = 1:length(label_ord)
+        if isempty(idx_cell{i})
+            counts_reord(i, :) = 0;
+        else
+            counts_reord(i, :) = counts(idx_cell{i}, :);
+        end
+    end
 end
 
-% number of subjects
-disp(['Number of subjects: '  num2str(numsid)]);
-disp(['Number of electrodes: '  num2str(length(all_xyz))]);
-disp('--------------------------------------------------------');
-scatter3(all_xyz(:, 1)+x_add, all_xyz(:, 2), all_xyz(:, 3), 7, 'k', 'filled');
+% make a dictionary of anatomical labels all set to empty arrays
+% this will keep track of the difference between number of speech responsive sites in one particular area
+anatomy_diff = containers.Map(label_ord, cell(length(label_ord), 1));
 
-% show distributions of anatomical coverage
-subplot(1, 2, 2);
-set(gcf,'Color','w');
-hold on
-[counts, ~, ~, labels] = crosstab(anatomy(:, 4));
-% remove all cases where coveage < 20
-mincount = 20;
-labels = labels(counts>mincount);
-counts = counts(counts>mincount);
+ctr = 1;
+figure;
+for h = {'lh', 'rh'}
+    hemi = h{1};
+    numsid = 0;     
+    
+    % find density map of native speech, lateral side
+    all_xyz = [];
+    anatomy = [];
+    speech_resp = [];
+    for si = SIDs
+        sid = si{1};
+        if strcmpi(imgall.(sid).hemi,hemi)
+            subject = imgall.(sid);
+            ls = find(cellfun(@(x) ismember(sid, x), {sSIDs, eSIDs, mSIDs, bSIDs}));
+            
+            if isfield(subject.img_mni, 'elecmatrix')
+                elecmatrix = subject.img_mni.elecmatrix; 
+                numel = size(elecmatrix, 1);
+                all_xyz = [all_xyz; elecmatrix]; 
 
-% remove NaN and Unknown, Right-Cerebral-WhiteMatter
-torem = {'NaN', 'Unknown', 'Right-Cerebral-White-Matter', ...
-            'Left-Cerebral-White-Matter', 'Left-Hippocampus', ...
-            'Right-Hippocampus'};
-counts = counts(~ismember(labels, torem));
-labels = labels(~ismember(labels, torem));
+                % note speech responsive (union electrodes)
+                speech_resp_tmp = zeros(size(elecmatrix, 1), 2);
+                for j = 1:length(all_elecs)
+                    native = j;
+                    if isfield(all_elecs{j}.allidx, sid)
+                        speech_resp_tmp(all_elecs{j}.allidx.(sid), native) = 1;
+                    end
+                end
+                
+                if isfield(subject.img_native, 'anatomy')
+                    anat_tmp = subject.img_native.anatomy(1:numel, 4);
+                elseif isfield(subject.imgNative, 'anatomy')
+                    anat_tmp = subject.imgNative.anatomy(1:numel, 4);
+                else
+                    disp(['using mni anatomy labels... for ' sid])
+                    anat_tmp = subject.img_mni.anatomy(1:numel, 4);
+                end
+                speech_resp = [speech_resp; speech_resp_tmp];
+                anatomy = [anatomy; anat_tmp];
 
-% order alphabetically
-[labels, idx] = sort(labels);
-counts = counts(idx);
+                % update the dictionary
+                for i = 1:length(label_ord)
+                    idx = ismember(anat_tmp, label_ord{i});
+                    if sum(idx)>0
+                        % append the difference between the two speech responsive sites to array
+                        anatomy_diff(label_ord{i}) = [anatomy_diff(label_ord{i}); ...
+                            sum(speech_resp_tmp(idx, 1) - speech_resp_tmp(idx, 2))];
+                    end
+                end
+                numsid=numsid+1;
+            else
+                disp(['Missing...' sid]);
+            end
+        end
+    end
 
-barh(counts, 'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none');
-set(gca, 'YTick', 1:length(labels), 'YTickLabel', labels, 'FontSize', 13);
-ylabel('anatomy');
-xlabel('count');
+    % number of subjects
+    disp(['Number of subjects: '  num2str(numsid)]);
+    disp(['Number of electrodes: '  num2str(length(all_xyz))]);
+    disp('--------------------------------------------------------');
+
+    % remove NaN and Unknown, Right-Cerebral-WhiteMatter
+    torem = {'NaN', 'Unknown', 'Right-Cerebral-White-Matter', ...
+                'Left-Cerebral-White-Matter', 'Left-Hippocampus', ...
+                'Right-Hippocampus'};
+    % remove all cases where coveage < 20
+    mincount = 20;
+
+    speech_resp_type = speech_resp(:, 1) + 2*speech_resp(:, 2);
+    [counts, ~, ~, labels] = crosstab(anatomy, speech_resp_type);
+    labels = labels(:, 1);
+    
+    % remove all cases where coverage < 20
+    labels = labels(sum(counts, 2)>mincount);
+    counts = counts(sum(counts, 2)>mincount, :);
+    
+    % remove NaN and Unknown, Right-Cerebral-WhiteMatter
+    counts = counts(~ismember(labels, torem), :);
+    labels = labels(~ismember(labels, torem));
+    
+    idx_cell = cellfun(@(x) find(ismember(labels, x)), ...
+        label_ord, 'UniformOutput', false);
+    counts_reord = nan(length(label_ord), 4);
+    for i = 1:length(label_ord)
+        if isempty(idx_cell{i})
+            counts_reord(i, :) = 0;
+        else
+            counts_reord(i, :) = counts(idx_cell{i}, :);
+        end
+    end
+    
+    subplot(1, 2, ctr)
+    b = barh(counts_reord, 'stacked', 'EdgeColor', 'none'); hold on;
+    cols = getColorsCrossComp(6);
+    b(1).FaceColor = [0.8 0.8 0.8];
+    b(2).FaceColor = cols(2, :);
+    b(3).FaceColor = cols(1, :);
+    b(4).FaceColor = [0.6 0.1 0.6];
+    if ctr==1
+        set(gca, 'YTick', 1:length(label_ord), 'YTickLabel', label_tick , 'FontSize', 13);
+    else
+        set(gca, 'YTick', [], 'FontSize', 13);
+    end
+    ylabel('anatomy');
+    xlabel('count');
+    xlim([0 300]);
+    ytickangle(30);
+    xticks([0 300]);
+    box off;
+    legend({'non-responsive', 'Spanish', 'English', 'both'});
+    ctr = ctr+1;
+end
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
@@ -1589,98 +1896,6 @@ end
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
-
-%% ----------------------------- UNUSED Panels ----------------------------
-
-%% Example electrode TRF weights
-
-% example electrodes in the figure
-% SID = 'EC172';
-% els = [74,  136];
-SID = 'EC282';
-els = [116, 119];
-
-corpusnames = {'dimex', 'timit'};
-details = {dimex_details, timit_details};
-bef=20;
-betacolor = flipud(prgn);
-
-modelname={'onset_phnfeatConsOnset_maxDtL_formantMedOnset'}; 
-modelfeatures  = [{'onset'}; timit_details.features.names([1:3, 8, 9, 11]); ... 
-    {'peakrate'; 'F1'; 'F2'; 'F3'; 'F4'}];
-
-for el = els
-    figure; 
-    weights = cell(2, 2);
-    for corp = 1:2
-        ctr=1;
-            subplot(2, 2, 1 + (corp-1)*2);
-   
-            if ctr==1
-                % read in strf weights
-                [weights{1, corp}] = getTRFweights(SID, el, corpusnames{corp}, ...
-                    {'onset_aud'}, datapath);
-    
-                ax = subplot(2, 2, 1 + (corp-1)*2);
-                imagesc(weights{1, corp}(:, 1:40));
-                if corp==1
-                    colormap(ax, flipud(blues));
-                else
-                    colormap(ax, flipud(reds));
-                end
-                colormap(betacolor)
-    
-                yticks([1 80]);
-                yticklabels({'0', '8'});
-                xlim([0.5 40])
-                xticks([1 40]);
-                xticklabels({'0', '-0.4'});
-                xlabel('Time (s)');
-                set(gca, 'FontSize', 13, 'Ydir', 'normal');
-    
-                % read in model trf weights   
-                [weights{2, corp}] = getTRFweights(SID, el, corpusnames{corp}, ...
-                    modelname, datapath);
-                
-                ax = subplot(2, 2, corp*2);
-                imagesc(weights{2, corp}(:, 1:40));
-                if corp==1
-                    colormap(ax, flipud(blues));
-                else
-                    colormap(ax, flipud(reds));
-                end
-                colormap(betacolor);
-                clim([-1.8 1.8]);
-
-                % formatting
-                yticks(1:length(modelfeatures));
-                yticklabels(modelfeatures);
-                xlim([0.5 40])
-                xticks([1 40]);
-                xticklabels({'0', '-0.4'});
-                xlabel('Time (s)');
-                set(gca, 'FontSize', 13);
-                clear strf
-                box off;
-            end
-            ctr=ctr+1;
-        
-        % more formatting
-        subplot(2, 2, 1 + (corp-1)*2);
-        yline(0, 'LineWidth', 1.5);
-        xline(0, 'LineWidth', 1.5);
-        xlabel('Time (s)');
-        set(gca, 'FontSize', 13);
-        ylabel('HFA (z)');   
-        box off;
-    end
-    sgtitle([num2str(el) ' ' num2str(corr(weights{2, 1}(:), weights{2, 2}(:)))])
-end
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
-
-
 
 %% Functions
 function [weights] = getTRFweights(SID, el, corpus, modelname, datapath)    

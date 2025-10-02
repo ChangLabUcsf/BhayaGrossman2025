@@ -1,4 +1,4 @@
-% Ilina Bhaya-Grossman
+% <% Ilina Bhaya-Grossman
 % 01.08.2022
 out_crosscomp_startup;
 SIDs = [sSIDs eSIDs bSIDs];
@@ -12,12 +12,21 @@ dimex_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_dimex_all.mat")
 bef=50;
 aft=50;
 
-TDwrd = loadDwrdMulti('timit', bef, aft, {'EC100', 'EC183'}, timit_details);
-Dwrd = loadDwrdMulti('dimex',  bef, aft, {'EC100', 'EC183'}, dimex_details);
+% load word structures
+if ~exist('Dwrd', 'var')
+    load("data/Figure3/Figure3_DIMEXWrd.mat");
+end
+
+if ~exist('TDwrd', 'var')
+    load("data/Figure3/Figure3_TIMITWrd.mat");
+end
+
+load('data/Figure2/Figure2_WordUniVar.mat');
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
-%% A - Example of segmentation difficulty
+
+%% A/B - Example of segmentation difficulty
 
 % English sentence example
 % find English and Spanish sentences that are roughly the same length
@@ -121,7 +130,7 @@ for lang = 1:2
 end
 
 
-%% B - Acoustic word-boundary decoding
+%% C - Acoustic word-boundary decoding (takes a minute to run)
 
 timing = 20;
 tps = 51-round(timing/2):51+round(timing/2); % around  
@@ -143,7 +152,7 @@ for i = {Dwrd, TDwrd}
     Swrd = i{1};
 
     % randomly sample 2000 instances to test on
-    rng(3);
+    rng(1);
     envidx{ctr} = randsample(find(cellfun(@(x) ~isempty(x), [Swrd.env])), ...
         1900);
     X_aud{ctr} = cat(3, Swrd.aud{envidx{ctr}});
@@ -171,7 +180,7 @@ end
 AUC_perm = [AUC_perm{1}; AUC_perm{2}];
 
 % plot the auc values with one boxplot, but scatter spanish and english as filled and empty circles
-figure('Position', [100, 300, 550, 300], 'renderer', 'painters');
+figure('Position', [100, 300, 550, 300], 'Renderer', 'painters');
 
 % combine AUC and perm boxcharts
 boxchart([ones(length(AUC_all(:)), 1); 2*ones(length(AUC_perm(:)), 1)], ...
@@ -221,22 +230,40 @@ disp(pval);
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd*;
 
-%% C/D - Native Brain and Example Word-Syllable ERP
+%% plotWORDERP: D/E - Native Brain and Example Word-Syllable ERP
 
 % find top 3 weighted electrodes and look at word erps
 f = figure; 
+pthresh = 0.01;
 
 % Spanish
 % SIDs = {'EC260', 'EC260', 'EC260', 'EC260', 'EC260', 'EC260', ...
 %     'EC260', 'EC260'}; % 'EC266', 'EC266'
 % els = [ 221, 192, 205, 206, 207, 208, 217, 214]; %236, 205 for EC260, 178, 175
 % Ec183
-SIDs = {'EC100'};% 'EC100', 'EC100', 'EC100','EC100'};
-els = 21;% 21,135, 22, 69, 70, 71, 118, 150]; %236, 205 for EC260, 178, 175
+% SIDs = {'EC100'};% 'EC100', 'EC100', 'EC100','EC100'};
+% els = [21];% 21,135, 22, 69, 70, 71, 118, 150]; %236, 205 for EC260, 178, 175
 
 % English
-SIDs = {'EC183'};% 'EC100', 'EC100', 'EC100','EC100'};
-els = 71;%, 56, 135, 151, 22, 70, 71, 150]; %236, 205 for EC260, 178, 175
+% SIDs = {'EC100'};% 'EC100', 'EC100', 'EC100','EC100'};
+% els = 132;%, 56, 135, 151, 22, 70, 71, 150]; %236, 205 for EC260, 178, 175
+
+SIDs = {'EC183'};% 
+els = 71;%
+
+% els = [185];%
+% SIDs = repmat({'EC163'}, length(els), 1);
+% 
+% els = [42, 57, 58, 72:74, 88];%
+% SIDs = repmat({'EC172'}, length(els), 1);
+
+% els = [132]; % 132, 135, 151, 22, 70, 71, 150, 236, 205
+% SIDs = repmat({'EC100'}, length(els), 1);
+
+% els = [71]; % , 56, 135, 151, 22, 70, 71, 150, 236, 205
+% SIDs = {'EC183'};
+
+% EC186, 207
 
 % Bilingual
 % EC163 - el55
@@ -245,6 +272,7 @@ els = 71;%, 56, 135, 151, 22, 70, 71, 150]; %236, 205 for EC260, 178, 175
 % 
 % % in figure
 % % EC100: 21, 71 EC183: 135, 71
+% EC186, 207
 % 
 % els = [55]; %236, 205 for EC260, 178, 175
 % SIDs = repmat({'EC163'}, length(els), 1);
@@ -255,7 +283,9 @@ els = 71;%, 56, 135, 151, 22, 70, 71, 150]; %236, 205 for EC260, 178, 175
 plotSingleTrial = 0;
 numel = length(els);
 Swrds = {Dwrd, TDwrd};
-for s = 1:2
+tps = 30:70;
+x = -0.2:0.01:0.2;
+for s = [2, 1]
     Swrd = Swrds{s};
 
     for ctr = 1:length(els)
@@ -265,7 +295,8 @@ for s = 1:2
         nanidx = cellfun(@(x) isempty(x), Swrd.(SID));% ...
             %| (Swrd.syll<2 & ~isnan(Swrd.syll));
         dummy.(SID).resp = cat(3, Swrd.(SID){~nanidx});
-        
+
+        dummy.(SID).resp  = dummy.(SID).resp(:, tps, :);
         dummy.wordOns = Swrd.wordOns (~nanidx);
         dummy.syllOns = ones(sum(~nanidx), 1);
 
@@ -277,25 +308,25 @@ for s = 1:2
         end
 
         subplot(2, numel, ctr+(s-1)*numel)
-        addpath(genpath('shadederror'))
+        rmpath(genpath('shadederror'));
         plotWordErp(dummy, SID, els(ctr), ...
-            [], f, cols, 1, 0.5, 1); hold on;
+            [], f, cols, 1, 0.2, 1); hold on;
         ylabel('HFA (z)');
         set(gca, 'FontSize', 13);
 
+        nanidx = squeeze(sum(isnan(dummy.(SID).resp(els(ctr), :, :))));
         [fvals, betweenVar, withinVar, df1, df2] = Fstat_TIMIT(...
-            dummy.(SID).resp(els(ctr), :, :), dummy.wordOns+1, [1, 2]);
-        corrected_pval = 0.01 / size(dummy.(SID).resp, 2);
+            dummy.(SID).resp(els(ctr), :, ~nanidx), dummy.wordOns(~nanidx)+1, [1, 2]);
+        corrected_pval = pthresh / size(dummy.(SID).resp, 2);
         fthresh = finv(1-corrected_pval, df1, df2);  
     
-        x = -0.5:0.01:0.5;
         scatter(x(fvals>fthresh), 0.1*ones(1, sum(fvals>fthresh)), 45, ...
             fvals(fvals>fthresh), 'filled', 'HandleVisibility', 'off');
         cm = colormap("gray");
         colormap(flipud(cm(1:200, :)))
         % ylim([0 1.3]);
-        ylim([-0.3 0.8]);
-        xlim([-0.2, 0.5]);
+        ylim([-0.2 0.5]);
+        xlim([-0.2, 0.2]);
         h=xline(0);
         h.Color = 'k';
         legend('off');
@@ -377,20 +408,20 @@ for lang = 1:2
             otherwise
                 featcol = [0 0 0];
         end   
-    
+
         % Make the desel structure
         desel=struct();
         desel.conds = 1:7;
-        
+
         % Determine size and color
         desel.sz = [2; 35*ones(length(desel.conds), 1)];
         desel.sz = [5; 25*desel.conds']; 
-        
+
         % Split peak rate and phonetic features for MNI plotting wordsurp_encoding.ls(x)
         desel.labels = [];
         desel.yval = arrayfun(@(x) wordsurp_encoding.(fields{lang})(x, index), ...
             1:height(wordsurp_encoding));
-        
+
         % Determine bin-edges linearly
         % yvals = sort(desel.yval(desel.yval>0 & ismember(wordsurp_encoding.ls,ls)'));
         % binedges = yvals(1:ceil(length(yvals)/8):length(yvals));
@@ -406,7 +437,7 @@ for lang = 1:2
             desel.(SID).condition = discretize(desel.yval(idx), ...
                 binedges);
         end 
-        
+
         desel.cols = [1 1 1; [linspace(1, featcol(1), length(binedges)); ...
             linspace(1, featcol(2), length(binedges)); ...
             linspace(1, featcol(3), length(binedges))]'];
@@ -428,7 +459,7 @@ for lang = 1:2
         % just for native brain and coverage
         % desel.(SIDs{1}).elid=[];
         % desel.(SIDs{1}).condition=[];
-        
+
         % desel.cols = [1 1 1; 212/256, 228/256 188/256; ...
         %     54/256, 85/256, 183/256; 64/256 55/256 110/256]; 
         nh = plotNativeElec(SIDs, desel, 1);
@@ -442,7 +473,7 @@ for lang = 1:2
             view(90, 0);
             set(l,'Style', 'infinite', 'Position',[1 0 1],'Color',[0.8 0.8 0.8]);
         end
-        
+
         alpha 0.8;
         % add a pie
         axes('Position',[.6 .15 .3 .3])
@@ -463,7 +494,7 @@ end
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* *wrd*;
 
-%% E - Single electrode quantity of Word-Syllable difference (takes a min to run)
+%% EC186: F - Single electrode quantity of Word-Syllable difference (takes a min to run)
 
 % need to preload all participants into Dwrd and TDwrd
 % TDwrd = loadDwrdMulti('timit', bef, aft, [eSIDs sSIDs], timit_details);
@@ -573,7 +604,7 @@ tbl.el = [electbl.el; electbl.el];
 tbl.ls = [electbl.ls; electbl.ls];
 tbl.contig = [electbl.natcontig; electbl.forcontig];
 tbl.native = [ones(height(electbl), 1); zeros(height(electbl), 1)];
-lme = fitlme(tbl, 'contig ~ 1 + native + ls + (1|SID) + (1|el:SID)');
+lme = fitlme(tbl, 'contig ~ native + ls + (1|hemi) + (1|SID) + (1|el:SID)');
 disp(lme);
 text(1.5, 35, getSigStr(lme.Coefficients.pValue(3), 1), 'FontSize', 20);
 
@@ -602,278 +633,10 @@ p(4).FontSize = 20;
 p(6).FontSize = 20;
 legend({'Native', 'Foreign', 'Both'}, 'Location', 'southeast');
 
-
-
-%% E - Neural word-boundary decoding 
-
-figure('Position', [100, 300, 550, 300], 'renderer', 'painters');
-
-% Specifies the type of decoding
-decode_type = 'word'; 
-ctr = 1;
-accls = cell(2, 1);
-for s = {Dwrd, TDwrd}
-    Swrd = s{1};
-    time_label = '600ms';
-    % time_label = '10ms-sliding';
-    lss = [1, 2, 4];
-    type = '';
-    
-    switch time_label
-        case '10ms-sliding'
-            accls{ctr} = nan(4, 13, 20); % Initializes a matrix for storing AUC values
-        otherwise
-            accls{ctr} = nan(4, 20);
-    end
-     
-    for ls = lss  
-        if ls == 3
-            subj = 'mandarinmono';
-        elseif ls == 4
-            subj = 'bilingual';
-        else
-            subj = 'monolingual';
-        end
-    
-        if startsWith(Swrd.sentid{1}, 's')
-            corpus = 'DIMEX';
-        else
-            corpus = 'TIMIT';
-        end
-        
-        filename =  [corpus '_' decode_type '_decode_' subj '_' time_label type '.mat']; 
-        load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
-    
-        switch time_label
-            case '10ms-sliding'
-                % Stores AUC values in the matrix
-                accls{ctr}(ls, :, :) = squeeze(decode_details.AUC(ls, :, :)); 
-            otherwise
-                accls{ctr}(ls, :) = squeeze(decode_details.AUC(ls, :, :));
-        end 
-
-        % Print out information about the decoding (number of elecs, unique subjects, trials)
-        disp([subj ':' num2str(ls) ' ' corpus ' ' time_label ' ' type ' ' decode_type]);
-        elecs = decode_details.elecs{ls};
-        pcaX = decode_details.pcaX{ls};
-        disp(['Number of elecs: ' num2str(length(elecs))]);
-        disp(['Unique subjects: ' num2str(length(unique(decode_details.encoding.SID(elecs))))]);
-        disp(['Number of components retained: ' num2str(size(pcaX, 2))])
-        if isfield(decode_details, 'ys')
-            disp(['Syllable trials: ' num2str(sum(decode_details.ys{ls}==0)) ' Word trials: ' ...
-                num2str(sum(decode_details.ys{ls}==1))]);
-        else
-            disp(['Syllable trials: ' num2str(sum(decode_details.y==0)) ' Word trials: ' ...
-                num2str(sum(decode_details.y==1))]);
-        end
-        disp(['AUC: ' num2str(median(decode_details.AUC(ls, :)))]);
-        disp('-------------------------------------------------------------------------------');
-    end
-    
-    % If using sliding window, use the maximum timepoint across subject groups
-    if strcmp(time_label, '10ms-sliding')
-        [~, maxtp] = max(mean(accls, [1 3], 'omitnan'));
-        accls{ctr} = squeeze(mean(accls{ctr}(:, maxtp-4: maxtp+4, :), 2));
-    end
-    ctr = ctr + 1;
-end
-
-% Plot native vs. nonnative
-native = [accls{1}(1, :), accls{2}(2, :)];
-nonnative = [accls{1}(2, :), accls{2}(1, :)];
-plts{1} = [native; nonnative];
-bil = [accls{1}(4, :), accls{2}(4, :)];
-plts{2} = [native; bil];
-labels = {{'native', 'foreign'}, {'monolingual', 'bilingual'}};
-
-cols = {'b', 'r'};
-for t = 1:2 % Type
-    subplot(1, 2, t);
-    plt = plts{t};
-    for c = 1:2
-        h = boxchart(ones(size(plt, 2), 1)*c, plt(c, :), ...
-            'BoxFaceColor', [1 1 1], 'BoxEdgeColor', 'k'); % Creates boxplots
-        h.JitterOutliers = 'on';
-        h.MarkerStyle = '.';
-        h.MarkerColor = 'k';
-        hold on;
-        scatter(randn(size(plt, 2), 1)*0.1+c-0.05, plt(c, :), 25, 'filled', ...
-            cols{c})
-
-        hold on;
-    end
-
-    % Perform a ttest on the native vs. non-native decoding
-    [h, p] = ttest2(plt(1, :), plt(2, :)); 
-    line([1.25 1.75], [.85, .85], 'Color', 'k', 'LineWidth', 1.5); % Draws a line
-    text(1.35, .87, getSigStr(p, 2), 'FontSize', 13); % Adds text to the plot
-    
-    % Formatting
-    xlabel('Group Type');
-    ylabel('AUC');
-
-    ylim([0.45 0.9]);
-    yticks([0.5:0.2:0.9])
-    yline(0.5, 'Color', 'k');
-
-    xlim([0.5 2.5])
-    xticks([1 2]);  
-    xticklabels(labels{t})
-    
-    set(gca, 'FontSize', 15);
-    box off;
-end
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
-
-%% F - Anatomical location of word boundary decoding
-% change this to use plotBrain Surface
-% Specifies the type of decoding
-decode_type = 'word'; 
-decode_tbl = {table(), table()};
-ctr = 1;
-accls = cell(2, 1);
-for s = {Dwrd, TDwrd}
-    Swrd = s{1};
-    time_label = '600ms';
-    % time_label = '10ms-sliding';
-    lss = [1, 2];
-    type = '';
-    
-    switch time_label
-        case '10ms-sliding'
-            accls{ctr} = nan(4, 13, 20); % Initializes a matrix for storing AUC values
-        otherwise
-            accls{ctr} = nan(4, 20);
-    end
-     
-    for ls = lss  
-        if ls == 3
-            subj = 'mandarinmono';
-        elseif ls == 4
-            subj = 'bilingual';
-        else
-            subj = 'monolingual';
-        end
-    
-        if startsWith(Swrd.sentid{1}, 's')
-            corpus = 'DIMEX';
-        else
-            corpus = 'TIMIT';
-        end
-        
-        filename =  [corpus '_' decode_type '_decode_' subj '_' time_label type '.mat']; 
-        load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
-    
-        switch time_label
-            case '10ms-sliding'
-                % Stores AUC values in the matrix
-                accls{ctr}(ls, :, :) = squeeze(decode_details.AUC(ls, :, :)); 
-            otherwise
-                accls{ctr}(ls, :) = squeeze(decode_details.AUC(ls, :, :));
-        end
-        
-        % Add all the electrodes, and decoding weights to the structure
-        tbl_tmp = decode_details.encoding(decode_details.elecs{ls}, :);
-        weights_tmp = decode_details.weights{ls};
-        % mean over fold (dim 1) and make a cell for each elec (dim 3)
-        tbl_tmp.('weights') = arrayfun(@(x) mean(weights_tmp(:, :, x), 1), ...
-            1:size(weights_tmp, 3), 'UniformOutput', false)';
-        native = (ls == ctr)+1;
-        decode_tbl{native} =  [decode_tbl{native}; tbl_tmp];
-    end
-    ctr = ctr + 1;
-end
-
-dens = cell(2, 2);
-xi = cell(2, 2);
-% foreign and native
-for native = 1:2
-
-    % for all decoding weights get the max tp and average over a 3 bin window
-    maxtp = cellfun(@(x) argmax(abs(x)), [decode_tbl{native}.weights]);
-    maxoverwind = cellfun(@(x) mean(abs(x(maxtp-1:maxtp+1))), [decode_tbl{native}.weights]);
-
-    % use plotMNI to plot the decoding weights
-    desel = struct();
-    
-    desel.labels = [];
-    desel.yval = maxoverwind/max(maxoverwind);
-    binedges = 0:0.1:1;
-    desel.conds = 1:length(binedges);
-    % desel.sz = [5; 20*desel.conds'];
-    desel.sz = [5; 10; 15*desel.conds']; 
-    
-    if native == 2
-        % native colors is blue
-        cls = flipud(blues(length(desel.conds)));
-    else
-        cls = flipud(reds(length(desel.conds)));
-    end
-    desel.cols = [0.3 0.3 0.3; cls(3:end, :)];
-
-    for sid = unique(decode_tbl{native}.SID)'
-        SID = sid{1};
-        idx = strcmp(decode_tbl{native}.SID, SID);
-        desel.(SID).elid = decode_tbl{native}.el(idx);
-        desel.(SID).condition = discretize(desel.yval(idx), binedges);
-    end
-
-    % plot MNI
-    SIDs = unique(decode_tbl{native}.SID);
-    mni_lh = plotMNIElec(SIDs, desel, 'lh', 1);
-    l = light;
-    view(270, 0);   
-    set(l,'Style', 'infinite', 'Position',[-1 0 0],'Color',[0.8 0.8 0.8]);
-
-    mni_rh = plotMNIElec(SIDs, desel, 'rh', 1);
-    l = light;
-    view(90, 0);
-    set(l,'Style', 'infinite', 'Position',[1 0 1],'Color',[0.8 0.8 0.8]);
-
-    % combine the two hemispheres
-    mni = [mni_lh; mni_rh];
-
-    [counts, ~, ~, labels] = crosstab(mni(mni.cond>1, :).anatomy);
-    % only display counts if they surpass 20
-    labels = labels(sum(counts, 2)>20);
-    counts = counts(sum(counts, 2)>20, :);
-    disp([labels, num2cell(counts)]);
-
-    % weighted density plot of the decoding weights
-    [dens{native, 1}, xi{native, 1}] = ...
-        ksdensity(mni_lh.y(mni_lh.cond>1), 'Weights', mni_lh.cond(mni_lh.cond>1)); 
-    [dens{native, 2}, xi{native, 2}] = ...
-        ksdensity(mni_rh.y(mni_rh.cond>1), 'Weights', mni_rh.cond(mni_rh.cond>1)); 
-end
-
-% plot the density of the decoding weights by hemisphere
-% figure('Position', [100, 300, 550, 300], 'renderer', 'painters');
-% hemis = {'left', 'right'};
-% for hemi = 1:2
-%     subplot(1, 2, hemi);
-%     % foreign
-%     plot(xi{1, hemi}, dens{1, hemi}, 'Color', 'r', 'LineWidth', 2); hold on;
-%     % native
-%     plot(xi{2, hemi}, dens{2, hemi}, 'Color', 'b', 'LineWidth', 2); hold on;
-%     xlabel('Normalized decoding weight');
-%     xticks(-80:80:80);
-%     ylabel('Density');
-%     set(gca, 'FontSize', 15);
-%     title(hemis{hemi});
-%     box off;
-% end
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
-
-
 %% ----------------------- Supplementary Figures --------------------------
-%% S7.0 - Neural word boundary (single trials)
-%% S7.1 - Neural word boundary (both Spanish and English)
+%% S9A - Neural word boundary (both Spanish and English)
 
-figure('renderer', 'painters');
+figure('Renderer', 'painters');
 Swrds = {Dwrd, TDwrd};
 titles = {'Spanish speech', 'English speech'};
 decode_type = 'word'; % 'word' 
@@ -912,7 +675,7 @@ for s = Swrds
         end
         
         filename =  [corpus '_' decode_type '_decode_' subj '_' time_label type '.mat']; 
-        load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
+        load([datapath 'Figure3/decode/' filename], 'decode_details');
     
         styles = {':', '-', '', '-'};
         switch time_label
@@ -921,12 +684,6 @@ for s = Swrds
             otherwise
                 accls(ls, :) = squeeze(decode_details.AUC(ls, :, :));
         end 
-    end
-    
-    % if using sliding window use maximum timepoint across subject groups
-    if strcmp(time_label, '10ms-sliding')
-        [~, maxtp] = max(mean(accls, [1 3], 'omitnan'));
-        accls = squeeze(mean(accls(:, maxtp-4: maxtp+4, :), 2));
     end
     
     if ctr == 1 % dimex
@@ -942,6 +699,7 @@ for s = Swrds
         h.MarkerStyle = '.';
         h.MarkerColor = colors(ls, :);
         hold on; % 'BoxStyle', 'filled'
+        rng(1);
         scatter(randn(size(accls, 2), 1)*0.1-0.05+position(ls), accls(ls, :), 25, 'filled', ...
             cols{(ls==ctr)+1})
     end  
@@ -959,7 +717,7 @@ for s = Swrds
         end
     end
      
-    [p, h] = ranksum(accls(combo(1), :), accls(combo(2), :));
+    [~, p] = ttest2(accls(pos(1), :), accls(pos(2), :), "Tail", "right");
     if ~isempty(getSigStr(p, 2))
         text(mean(pos)-0.25, 0.8, getSigStr(p, 2), 'FontSize', 15);
     end
@@ -967,7 +725,7 @@ for s = Swrds
     yline(0.5, 'Color', 'k');
    
     ylim([0.45 0.9]);
-    yticks([0.5:0.2:0.9]);
+    yticks(0.5:0.2:0.9);
     ylabel('AUC');
     set(gca, 'FontSize', 15);
     title(titles{ctr}, 'Fontweight', 'normal')
@@ -978,117 +736,107 @@ end
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
 
-%% S7.2 - Neural word boundary (single subjects across languages)
+%% S9B - Neural word boundary (temporally resolved)
+% run from inside crosslang folder
+titles = {'Spanish speech', 'English speech'};
+subtype = '';
 
-timelabel = '600ms';
-subj = 'monolingual';
-
-tmp = load([datapath ...
-        'ecog_decode/wordOnset/DIMEX_word_decode_' subj '_' timelabel '_bysubj.mat'], ...
-        'decode_details');
-dimex=tmp.decode_details.tbl;
-
-tmp = load([datapath ...
-        'ecog_decode/wordOnset/DIMEX_word_decode_' subj '_' timelabel '.mat'], ...
-        'decode_details');
-dimex_grp = tmp.decode_details;
-
-tmp = load([datapath ...
-        'ecog_decode/wordOnset/TIMIT_word_decode_' subj '_' timelabel '_bysubj.mat'], ...
-        'decode_details');
-timit=tmp.decode_details.tbl;
-
-tmp = load([datapath ...
-        'ecog_decode/wordOnset/TIMIT_word_decode_' subj '_' timelabel '.mat'], ...
-        'decode_details');
-timit_grp=tmp.decode_details;
-
-joined = join(timit, dimex, 'Keys', 'SID');
+switch subtype
+    case '_acs'
+        linestyle = '--';
+     case '_acsTop'
+        linestyle = '--';
+    case ''
+        linestyle = '-';
+    case '_word'
+        linestyle = '-.';
+end
 
 figure;
-% plot the average AUC for each subject in the two corpora (Spanish and English)
-langs = {'dimex', 'timit'};
-titles = {'Spanish speech', 'English speech'};
-grp_decode = {dimex_grp, timit_grp};
-cols = [0 0 1; 1 0 0];
-for lang = 1:2
-    subplot(2, 1, lang)
-    auc_field = ['auc_' langs{lang}];
-    medauc_field = ['medauc_' langs{lang}];
-    elec_field = ['elecs_' langs{lang}];
-    ls_field = ['ls_' langs{lang}];
-    for i = 1:height(joined)
-        ls = joined.(ls_field)(i);
-        foreign = lang ~= ls;
-        sz = length(joined.(elec_field){i})*1.5;
+ctr=1;
+plotBil = 0;
+for c = {'DIMEX', 'TIMIT'}
+    
+    corpus = c{1};
+    disp(['-----------' corpus '--------------']);
+    filename = [corpus '_word_decode_monolingual_10ms-sliding' subtype '.mat']; 
+    load([datapath 'Figure3/decode/' filename], 'decode_details');
+    x = (decode_details.startp-50)./100;
 
-        % if this subject was included in group decoding
-        %if ismember(joined.SID{i}, grp_decode{lang}{ls}.
-        grpsids = unique(grp_decode{lang}.encoding.SID(grp_decode{lang}.elecs{ls}));
-        if ismember(joined.SID{i}, grpsids)
-            edgecol = 'k';
-        else
-            edgecol = 'none';
-        end
+    subplot(2, 1, ctr)
+    colors = [1 0 0; 0 0 1];
+    data = nan(2, length(x), size(decode_details.AUC, 3));
+    for ls = 1:2
+        % data(ls, :, :) = smoothdata(squeeze(decode_details.AUC(ls, :, :)), ...
+        %     'SmoothingFactor', 0.1);
+        data(ls, :, :) = squeeze(decode_details.AUC(ls, :, :));
+        y = squeeze(mean(data(ls, :, :), 3));
+        err = squeeze(nansem(data(ls, :, :), 3));
+        shadedErrorBar(x, y, err, ...
+            'lineprops', {'color', colors((ls==ctr)+1, :), 'linewidth', 2, ...
+            'linestyle', linestyle}); hold on;
 
-        scatter((foreign + 1) - randn(1)*0.1 + 0.05, median(joined.(auc_field){i, :}), sz, ...
-            'filled', 'MarkerFaceColor', cols(foreign+1, :), 'MarkerFaceAlpha', 0.6, ...
-            'MarkerEdgeColor', edgecol, 'LineWidth', 2);
-        hold on;
+        elecs = decode_details.elecs{ls};
+        disp(['ls: ' num2str(ls) ', elecs:' num2str(length(elecs)) ...
+            ', num subj: ' num2str(length(unique(decode_details.encoding.SID(elecs))))]);
+
+        % print max peak +- values
+        maxtp = argmax(mean(squeeze(data(ls, :, :)), 2));
+        %disp(datastats(data(ls, maxtp, :)))
     end
 
-    % make a box plot ontop of scatter
-    aucs = arrayfun(@(x) median(joined.(auc_field){x, :}), 1:height(joined));
-    numel = arrayfun(@(x) size(joined.(elec_field){x, :}, 1), 1:height(joined));
-    joined.(medauc_field) = aucs';
-    joined.('numel') = numel';
+    X = reshape(cat(2, squeeze(data(1, :, :)), squeeze(data(2, :, :))), 1, ...
+        length(x), size(data, 3)*2);
+    y = [ones(1, size(data, 3)) 2*ones(1, size(data, 3))];
+    [fvals, ~, ~, df1, df2] = Fstat_TIMIT(X, y, [1, 2]);
 
-    boxchart((joined.(ls_field)~=lang)+1, aucs, 'BoxFaceColor', 'w', ...
-        'BoxEdgeColor', 'k', 'JitterOutliers', 'off', 'MarkerStyle', 'none', ...
-        'MarkerColor', 'k'); hold on;
-    ylim([0.45 0.75]);
-    xlim([0.5 2.5]);
-    yline(0.5, 'k');
-    yticks([0.5 0.7]);
-    ylabel('AUC')
-    xticks([1, 2]);
-    xticklabels({'Native', 'Foreign',});
-    set(gca, 'FontSize', 13);
-    title(titles{lang}, 'Fontweight', 'normal');
+    % Bonferroni corrected
+    fthresh = finv(1-(0.01/size(data, 2)), df1, df2);  
 
-    % ranksum
-    % make this a LME
-    lme = fitlme(joined,[medauc_field '~ 1 + ' ls_field '+numel']);
-    %[~, p] = ttest2(aucs(joined.(ls_field)==lang), aucs(joined.(ls_field)~=lang));
+    scatter(x(fvals>fthresh), 0.52*ones(1, sum(fvals>fthresh)), 45, ...
+        int32(fvals(fvals>fthresh))', 'filled', 'HandleVisibility', 'off');
+    cm = colormap("gray");
+    colormap(flipud(cm(1:200, :)))
+
+    ylim([0.45 0.8]);
+    xlim([-0.2 0.4])
+    yticks((0.5:0.2:0.7));
+    set(gca, 'FontSize', 15);
     
-    text(1.5, 0.65, getSigStr(lme.Coefficients.pValue(2), 2), 'FontSize', 13);
+    h=title(titles{ctr}, 'Fontweight', 'normal');
+    xline(0, '-k', 'linewidth', 1, 'handlevisibility', 'off');
+    yline(0.5, '-k', 'linewidth', 1, 'handlevisibility', 'off');
+    xlabel('Time (s)')
+    ylabel('AUC');
+    ctr=ctr+1;
 end
+legend({'foreign', 'native'}, 'location', 'northwest');
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
 
-%% S7.2 - Neural word boundary (single subjects across participants)
+%% S9C - Neural word boundary (single subjects across participants)
 
 timelabel = '600ms';
 subj = 'monolingual';
 
 tmp = load([datapath ...
-        'ecog_decode/wordOnset/DIMEX_word_decode_' subj '_' timelabel '_bysubj.mat'], ...
+        'Figure3/decode/DIMEX_word_decode_' subj '_' timelabel '_bysubj.mat'], ...
         'decode_details');
 dimex=tmp.decode_details.tbl;
 
 tmp = load([datapath ...
-        'ecog_decode/wordOnset/DIMEX_word_decode_' subj '_' timelabel '.mat'], ...
+        'Figure3/decode/DIMEX_word_decode_' subj '_' timelabel '.mat'], ...
         'decode_details');
 dimex_grp = tmp.decode_details;
 
 tmp = load([datapath ...
-        'ecog_decode/wordOnset/TIMIT_word_decode_' subj '_' timelabel '_bysubj.mat'], ...
+        'Figure3/decode/TIMIT_word_decode_' subj '_' timelabel '_bysubj.mat'], ...
         'decode_details');
 timit=tmp.decode_details.tbl;
 
 tmp = load([datapath ...
-        'ecog_decode/wordOnset/TIMIT_word_decode_' subj '_' timelabel '.mat'], ...
+        'Figure3/decode/TIMIT_word_decode_' subj '_' timelabel '.mat'], ...
         'decode_details');
 timit_grp=tmp.decode_details;
 
@@ -1157,13 +905,16 @@ for lss = 1:2
     title(titles{lss}, 'Fontweight', 'normal');
 
     % two sample ttest
-    %[~, p] = ttest(auc(1, :), auc(2, :));
+    [p, ~] = signrank(auc(1, :), auc(2, :), 'Tail', 'right');
+    disp(['one-tailed paired sign rank ' num2str(p) ', observations = ' num2str(size(auc, 2))]);
     tbl = table();
     tbl.auc = [auc(1, :), auc(2, :)]';
     tbl.native = [ones(1, length(sidx)), 0*ones(1, length(sidx))]';
     tbl.numel = [sz(1, :)/1.5, sz(2, :)/1.5]';
-    lme2 = fitlme(tbl, 'auc ~ 1 + native + numel');
-    text(1.5, 0.65, getSigStr(lme2.Coefficients.pValue(2), 2), 'FontSize', 13);
+    lme2 = fitlme(tbl, 'auc ~ native + (1|numel)');
+    %disp(lme2)
+    disp(['From linear mixed effects: ' num2str(lme2.Coefficients.pValue(2), 2)])
+    text(1.5, 0.65, getSigStr(p, 2), 'FontSize', 13);
 end
 
 % add median and range of trials and electrodes across conditions
@@ -1179,190 +930,12 @@ disp(['Median number of electrodes for TIMIT: ' num2str(med_timit) ...
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
 
-%% S7.3 - Neural word boundary (temporally resolved)
-% run from inside crosslang folder
-addpath(genpath('..//util/plotting/shadederror'))
-titles = {'Spanish speech', 'English speech'};
-subtype = '';
-
-switch subtype
-    case '_acs'
-        linestyle = '--';
-     case '_acsTop'
-        linestyle = '--';
-    case ''
-        linestyle = '-';
-    case '_word'
-        linestyle = '-.';
-end
-
-figure;
-ctr=1;
-plotBil = 0;
-for c = {'DIMEX', 'TIMIT'}
-    
-    corpus = c{1};
-    disp(['-----------' corpus '--------------']);
-    filename = [corpus '_word_decode_monolingual_10ms-sliding' subtype '.mat']; 
-    load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
-    x = (decode_details.startp-50)./100;
-
-    subplot(2, 1, ctr)
-    colors = [1 0 0; 0 0 1];
-    data = nan(2, length(x), size(decode_details.AUC, 3));
-    for ls = 1:2
-        data(ls, :, :) = smoothdata(squeeze(decode_details.AUC(ls, :, :)), ...
-            'SmoothingFactor', 0.1);
-        %data = squeeze(decode_details.AUC(ls, :, :));
-        y = squeeze(mean(data(ls, :, :), 3));
-        err = squeeze(nansem(data(ls, :, :), 3));
-        shadedErrorBar(x, y, err, ...
-            'lineprops', {'color', colors((ls==ctr)+1, :), 'linewidth', 2, ...
-            'linestyle', linestyle}); hold on;
-
-        elecs = decode_details.elecs{ls};
-        disp(['ls: ' num2str(ls) ', elecs:' num2str(length(elecs)) ...
-            ', num subj: ' num2str(length(unique(decode_details.encoding.SID(elecs))))]);
-
-        % print max peak +- values
-        maxtp = argmax(mean(squeeze(data(ls, :, :)), 2));
-        %disp(datastats(data(ls, maxtp, :)))
-    end
-
-    X = reshape(cat(2, squeeze(data(1, :, :)), squeeze(data(2, :, :))), 1, ...
-        length(x), size(data, 3)*2);
-    y = [ones(1, size(data, 3)) 2*ones(1, size(data, 3))];
-    [fvals, ~, ~, df1, df2] = Fstat_TIMIT(X, y, [1, 2]);
-    % Bonferroni corrected
-    fthresh = finv(1-(0.01/size(data, 2)), df1, df2);  
-
-    scatter(x(fvals>fthresh), 0.52*ones(1, sum(fvals>fthresh)), 45, ...
-        int32(fvals(fvals>fthresh))', 'filled', 'HandleVisibility', 'off');
-    cm = colormap("gray");
-    colormap(flipud(cm(1:200, :)))
-
-    ylim([0.45 0.8]);
-    xlim([-0.2 0.4])
-    yticks((0.5:0.2:0.7));
-    set(gca, 'FontSize', 15);
-    
-    h=title(titles{ctr}, 'Fontweight', 'normal');
-    xline(0, '-k', 'linewidth', 1, 'handlevisibility', 'off');
-    yline(0.5, '-k', 'linewidth', 1, 'handlevisibility', 'off');
-    xlabel('Time (s)')
-    ylabel('AUC');
-
-    ls=4;
-    if plotBil
-        filename = [corpus '_word_decode_bilingual_10ms-sliding' subtype '.mat']; 
-        load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
-     
-        data(4, :, :) = smoothdata(squeeze(decode_details.AUC(ls, :, :)), ...
-            'SmoothingFactor', 0.0);
-        y = squeeze(mean(data(4, :, :), 3));
-        err = squeeze(nansem(data(4, :, :), 3));
-        shadedErrorBar(x, y, err, ...
-            'lineprops', {'color', colors(ls, :), 'linewidth', 2, ...
-            'linestyle', linestyle}); hold on;
-        legend({'Spanish', 'English', 'Bilingual'});
-        elecs = decode_details.elecs{ls};
-            disp(['ls: ' num2str(ls) ', elecs:' num2str(length(elecs)) ...
-                ', num subj: ' num2str(length(unique(decode_details.encoding.SID(elecs))))]);
-    
-        % bilingual versus native monolingual
-        X = reshape(cat(2, squeeze(data(ctr, :, :)), squeeze(data(4, :, :))), 1, ...
-            length(x), size(data, 3)*2);
-        y = [ones(1, size(data, 3)) 2*ones(1, size(data, 3))];
-        [fvals, betweenVar, withinVar, df1, df2] = Fstat_TIMIT(X, y, [1, 2]);
-        fthresh = finv(1-0.001, df1, df2);  
-    
-        scatter(x(fvals>fthresh), 0.5*ones(1, sum(fvals>fthresh)), 45, ...
-            int32(fvals(fvals>fthresh)), 'filled', 'HandleVisibility', 'off');
-        cm = colormap("gray");
-        colormap(flipud(cm(1:200, :)))
-    end
-
-    % to plot the Mandarin participants
-    % if strcmp(corpus, 'TIMIT')
-    %     ls=3;
-    %     filename = [corpus '_word_decode_mandarinmono_10ms-sliding.mat']; 
-    %     load(filename);
-    %     data = smoothdata(squeeze(decode_details.AUC(ls, :, :)));
-    %     y = squeeze(mean(data, 2));
-    %     err = squeeze(nansem(data, 2));
-    %     shadedErrorBar(x, y, err, ...
-    %         'lineprops', {'color', colors(1, :), 'linewidth', 1.5}); hold on;
-    %     legend({'Spanish', 'English', 'Bilingual', 'Mandarin'});
-    %end
-    ctr=ctr+1;
-end
-legend({'foreign', 'native'}, 'location', 'northwest');
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
-
-%% S8.0 - Acoustic cues to word boundary (average envelope)
-
-befaft = [0.5 0.5];
-x = -befaft(1):0.01:befaft(2);
-
-colors = getColorsCrossComp(1);
-colors = [0.2 0.2 0.2; 0.2 0.2 0.2];
-addpath(genpath('shadederror/'))
-
-figure;
-ctr=1;
-titles = {'Spanish', 'English'};
-for i = {Dwrd, TDwrd}
-    subplot(2, 1, ctr)
-    ywrd = squeeze(cat(3, i{1}.env{logical(i{1}.wordOns)}))';
-    ysyll = squeeze(cat(3, i{1}.env{~i{1}.wordOns}))';
-    
-    % Plot the average envelope for word and syllable
-    shadedErrorBar(x, mean(ysyll, 1), nansem(ysyll, 1), ...
-        'lineprops', {'color', [0.8 0.8 0.8], 'linewidth', 1.8});
-    shadedErrorBar(x, mean(ywrd, 1), nansem(ywrd, 1), ...
-        'lineprops', {'color', colors(ctr, :), 'linewidth', 2.5}); hold on;
-
-    % Calculating the F-stat values over time
-    [fvals, betweenVar, withinVar, df1, df2] = Fstat_TIMIT(...
-        reshape([ysyll; ywrd]', 1, size([ysyll; ywrd], 2), size([ysyll; ywrd], 1)), ...
-        [ones(1, size(ysyll, 1)) 2*ones(1, size(ywrd, 1))], [1, 2]);
-    fthresh = finv(1-0.0001, df1, df2);  
-
-    % Visualizing the F-stat values on average envelope plot
-    % scatter(x(fvals>fthresh), 0.1*ones(1, sum(fvals>fthresh)), 15, ...
-    %     fvals(fvals>fthresh), 'filled');
-    % cm = colormap("gray");
-    % colormap(flipud(cm(1:200, :)));
-
-    % Reference lines and formatting
-    xline(0, 'LineWidth', 2, 'LineStyle', '-', 'Color','r');
-    ylabel('Envelope(norm)'); 
-    if ctr==2
-        xlabel('Time (s)');
-    end
-    legend({'syllable', 'word'});
-    set(gca, 'FontSize', 13);
-    %ylim([-0.01 1]);
-    yticks(0:0.5:1)
-    title(titles{ctr}, 'FontWeight', 'normal');
-    xlim([-0.3 0.3]);
-    xticks([-0.2 0.2]);
-
-    ctr=ctr+1;
-end
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
-
-
-%% S8.1 - Acoustic cues to word boundary (boundary decoding)
+%% LOGISTIC: S10A - Acoustic cues to word boundary (boundary decoding)
 % timing = [5, 10, 20, 50]; 
 timing = 20;
 nreps = 20;
 mintrials = 1905;
-fields = {'env', 'formant', 'consphnfeat', 'aud'};
+fields = {'env', 'formant', 'consphnfeat'};
 pcaflags = [0 0 0 1];
 Swrds = {Dwrd, TDwrd};
 corpus_details = {dimex_details, timit_details};
@@ -1373,7 +946,8 @@ for lang = 1:2
 
     % randomly sample 2000 instances to use
     rng(1);
-    trlidx = randsample(find(cellfun(@(x) ~isempty(x), [Swrd.env])), mintrials);
+    trlidx = randsample(find(cellfun(@(x) ~isempty(x), ...
+        [Swrd.env])), mintrials);
     
     % initialize variables
     AUC = nan(length(fields), length(timing), nreps);
@@ -1404,18 +978,18 @@ for i = feats % which acoustic feature
     auc = nan(2, 20);
     for ls = 1:2
         auc(ls, :) = squeeze(AUC_all{ls}(i, size(AUC_all{ls}, 2), :));
-        boxplot(auc(ls, :)*100, 'Position', i-0.35+0.25*ls, 'Color', ...
-            cols{ls}(length(cols{ls})-1, :), 'BoxStyle', ...
-            'filled', 'OutlierSize', 0.01); hold on;
+        boxplot(auc(ls, :), 'Position', i-0.35+0.25*ls, 'Color', ...
+            cols{ls}(length(cols{ls})-2, :), 'BoxStyle', ...
+            'filled', 'Symbol', ''); hold on;
     end
-    [~, p] = ttest2(auc(1, :), auc(2, :));
-    text(i, 83, getSigStr(p, 2), 'FontSize', 15);    
+    [p, ~] = signrank(auc(1, :), auc(2, :));
+    text(i, 0.8, getSigStr(p, 1), 'FontSize', 20, 'FontWeight', 'bold');    
 end
 
 %formatting
-ylim([40 85]);
+ylim([0.40 0.9]);
 yline(0.5, 'Color', 'k');
-yline(50, '--k', 'LineWidth', 2);
+yticks(0.4:0.2:0.8);
 xlabel('Feature');
 ylabel('AUC');    
 xticks(1:length(fields));
@@ -1426,10 +1000,7 @@ box off;
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd* X_neural;
 
-%% S8.2 - Acoustic cues to word boundary (cross training)
-% timing = [5, 10, 20, 50]; 
-% timing = [5, 10, 20];
-
+%% S10B - Acoustic cues to word boundary (cross training)
 timing = 20;
 mintrials = 1905;
 tps = 51-round(timing/2):51+round(timing/2); % around  
@@ -1460,19 +1031,19 @@ end
 
 ctr = 1;
 for i = {Dwrd, TDwrd}
-    AUC = nan(2, length(timing), nreps);
-    acc = nan(2, length(timing), nreps); % test accuracy
+    AUC = nan(2, nreps);
+    acc = nan(2, nreps); % test accuracy
     weights = cell(length(timing), 1); % aud weights
           
     % 1 is aud
      X = reshape(X_aud{ctr}(:, tps, :), 80*length(tps), []);
-    [fp_aud, tp_aud, AUC(1, ctr, :), Xaud, ~, acc(1, ctr, :), ...
+    [fp_aud, tp_aud, AUC(1, :), Xaud, ~, acc(1, :), ...
         weights{ctr}, ~, Mdl, comp, mu] = logistic(X', y{ctr}, 1, [], tps, nreps); 
 
     % Generate the cross language predictions
     crossctr = mod(ctr, 2)+1;
     X_cross = reshape(X_aud{crossctr}(:, tps, :), 80*length(tps), []);
-    [AUC(2, ctr, :), pcaX] = crosstestlogistic(X_cross', y{crossctr}', ...
+    [AUC(2, :), pcaX] = crosstestlogistic(X_cross', y{crossctr}', ...
         Mdl, comp, mu, nreps);
                          
     AUC_all{ctr}=AUC;
@@ -1481,8 +1052,8 @@ for i = {Dwrd, TDwrd}
     avg = {cat(3, Swrd.aud{Swrd.wordOns & ~Swrd.sentOns}); ...
         cat(3, Swrd.aud{~Swrd.wordOns & ~Swrd.sentOns})};
 end
-tmp = brewermap(5, 'YlGnBu');
-tmp2 = brewermap(5, 'YlOrRd');
+tmp = brewermap(7, 'YlGnBu');
+tmp2 = brewermap(7, 'YlOrRd');
 
 % plot the auc values
 cols = [{tmp(2:end, :)}, {tmp2(2:end, :)}];
@@ -1490,210 +1061,27 @@ figure;
 for ls = 1:2
     auc = nan(2, 20);
     for feat = [1, 2] 
-        auc(feat, :) = squeeze(AUC_all{ls}(feat, size(AUC_all{ls}, 2), :));
-        boxplot(auc(feat, :)*100, 'Position', ls-0.35+0.25*feat, 'Color', ...
-            cols{ls}(length(cols{ls})-1, :), 'BoxStyle', ...
-            'filled', 'OutlierSize', 0.01); hold on;
+        auc(feat, :) = squeeze(AUC_all{ls}(feat, :));
+        boxplot(auc(feat, :), 'Position', ls-0.35+0.25*feat, 'Color', ...
+            cols{ls}(length(cols{ls})-feat*2, :), 'BoxStyle', ...
+            'filled', 'Symbol', ''); hold on;
         % feat-0.35+0.25*ls
     end
-    [h, p] = ttest2(auc(1, :), auc(2, :));
-    text(ls, 83, getSigStr(p, 2), 'FontSize', 15);    
+    [p, ~] = signrank(auc(1, :), auc(2, :), 'Tail', 'right');
+    %[h, p] = ttest2(auc(1, :), auc(2, :), 'Tail', 'right');
+    text(ls, 0.83, getSigStr(p, 1), 'FontSize', 20, 'FontWeight', 'bold');    
 end
 
 % Formatting
-ylim([48 85]);
+difflang = signrank(AUC_all{1}(1, :), AUC_all{2}(1, :));
+text(1.5, 0.8, getSigStr(difflang, 1), 'FontSize', 18);
+disp(difflang)
 yline(0.5, 'Color', 'k', 'HandleVisibility', 'off');
-yline(50, '--k', 'LineWidth', 2, 'HandleVisibility', 'off');
 xlabel('Feature');
 ylabel('AUC');    
 set(gca, 'FontSize', 13, 'Xtick', 1:2, 'Xticklabel', ...
     {'Same-Language', 'Cross-Language' });
 box off;
 
-figure;
-cdata = [median(AUC_all{1}, [2, 3], 'omitnan'), ...
-        median(AUC_all{2}, [2, 3], 'omitnan');]';
-err = [nansem(AUC_all{1}(:, 1, :), 3), ...
-    nansem(AUC_all{2}(:, 2, :), 3);];
-b = bar(cdata, 'FaceColor', 'none'); hold on;
-
-% Calculate the number of groups and number of bars in each group
-[ngroups,nbars] = size(cdata);
-
-% Get the x coordinate of the bars
-x = nan(nbars, ngroups);
-for i = 1:nbars
-    x(i,:) = b(i).XEndPoints;
-end
-% Plot the errorbars
-errorbar(x',cdata,err,'k','linestyle', ...
-    'none', 'LineWidth', 1, 'CapSize',0.5);
-hold off
-
-hatchfill2(b(2),'cross','HatchAngle',45, ...
-    'hatchcolor',[0 0 0],'HatchDensity', 20);
-
-set(gca, 'FontSize', 13, 'Xtick', 1:2, 'Xticklabel', ...
-    {'English', 'Spanish'});
-ylabel('AUC')
-ylim([0.5 1]);
-yticks([0.5 1]);
-box off; 
-xlabel('Trained on');
-legend({'Same-language', 'Cross-language'});
-
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd* X_neural;
-
-%% ----------------------------- UNUSED Panels ----------------------------
-%% Correlating neural word boundary decoding weight and word-surprise
-
-corpora = {'DIMEX', 'TIMIT'};
-fields = {'sp_uv_all', 'eng_uv_all'};
-r = nan(2, 5);
-p = nan(2, 5);
-
-figure;
-for corp = 1:2
-    corpus = corpora{corp};
-    filename =  [corpus '_word_decode_monolingual_600ms.mat']; 
-    load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
-    
-    for ls = corp % only show the case where its native
-        weights = squeeze(mean(decode_details.weights{ls}, 1));
-        avg_weights = mean(abs(decode_details.weights{ls}), [1, 3]);
-        [~, max_tp] = max(avg_weights);
-
-        % extract decoding weights
-        tbl = decode_details.encoding(decode_details.elecs{ls}, :);
-        tbl.mdl_weight = mean(abs(weights(max_tp-5:min(max_tp+5, 58), :)))';
-
-        % remove electrodes if they do not contribute to the model (?)
-        encode_tbl = innerjoin(tbl, wordsurp_encoding, 'Keys', {'SID', 'el'});
-        featureOrd = {'onset', 'peakrate', 'formant', 'consonant', ...
-            'word+surp', 'word', 'surp'};
-        
-        for index = 1:5
-            idx = encode_tbl.(fields{corp})(:, index)>0;
-            x = encode_tbl.mdl_weight(idx);
-            y = encode_tbl.(fields{corp})(idx, index);
-        
-            % correlate the encoding table unique variance and the decoding
-            % model weight
-            [r(corp, index), p(corp, index)] = corr(x, y, 'Type', 'Spearman'); 
-
-            subplot(1, 5, index+(corp-1)*5);
-            scatter(x, y, 10, 'k', 'filled');
-            l = lsline;
-            l.LineWidth = 1.8;
-            yticks([]);
-            xticks([]);
-            title(getSigStr(p(corp, index), 2));
-            xlabel('model weight');
-            ylabel([featureOrd{index} '\Delta R^2 ']);
-        end
-    end
-end
-
-figure;
-% compare TIMIT and DIMEx
-bar(r', 'grouped', 'FaceAlpha', 0.6, 'EdgeColor', 'none');
-for corp = 1:2
-    for i = 1:5
-        text(i+0.3*(corp-1), r(corp, i)+0.02, ...
-            getSigStr(p(corp, i), 2), 'FontSize', 13);
-    end
-end
-ylim([-0.1 0.6]);
-box off;
-set(gca, 'FontSize', 15, 'Xtick', 1:5, 'Xticklabel', ...
-    featureOrd(1:5), 'Ytick', [0 0.5]);
-ylabel('Spearman corr')
-legend({'Spanish speech', 'English speech'})
-
-figure;
-% compare TIMIT and DIMEx
-bar(r, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
-for corp = 1:2
-    for i = 1:5
-        text((corp-1)+0.1*(i-1), r(corp, i)+0.02, ...
-            getSigStr(p(corp, i), 2), 'FontSize', 13);
-    end
-end
-
-ylim([-0.1 0.6]);
-box off;
-set(gca, 'FontSize', 15, 'Ytick', [0 0.5]);
-ylabel('Spearman corr');
-xticklabels({'Spanish', 'English'});
-xlabel('Language')
-legend(featureOrd)
-
-%% Acoustic cues to word boundary (sonority)
-
-details = {dimex_details, timit_details};
-titles = {'Spanish speech', 'English speech'};
-swrds = {Dwrd, TDwrd};
-colors = getColorsCrossComp(1);
-
-figure;
-for s = 1:2
-    Swrd = swrds{s};
-    phnids = nan(height(Swrd), 11);
-    sonority = nan(height(Swrd), 11);
-    for i = 1:height(Swrd)
-        precphns = Swrd.precPhns{i};
-        if ~isempty(precphns)        
-            phnids(i, 7-length(precphns):6) = precphns;
-        end
-
-        onsphns = Swrd.onsPhns{i};
-        if ~isempty(onsphns)        
-            phnids(i, 6:5+length(onsphns)) = onsphns;
-        end
-
-        % Convert phoneme ids to phoneme names to sonority values (0 / 1)
-        for c = 1:size(phnids(i, :), 2)
-            phnid = phnids(i, c);
-            if ~isnan(phnid)
-                % convert to phn
-                charphn = details{s}.phnnames(phnid);
-
-                % convert to sonority
-                sonority(i, c) = ismember(charphn, ...
-                    details{s}.features.sonorant);
-            end
-        end        
-        clear onsphns precphns
-    end    
-
-    subplot(1, 2, s);
-
-    % Plot probability of sonority at each position around word onset
-    wrdsonor = sonority(logical(Swrd.wordOns), :);
-    wrdprct = sum(wrdsonor, 'omitnan')./size(wrdsonor, 1);
-    plot(smoothdata(wrdprct, 'SmoothingFactor', 0), ...
-        'LineWidth', 2, 'Color', colors(s, :)); hold on;
-
-    % Plot probability of sonority at each position around syllable onset
-    syllsonor = sonority(logical(~Swrd.wordOns), :);
-    syllprct = sum(syllsonor, 'omitnan')./size(syllsonor, 1);
-    plot(smoothdata(syllprct, 'SmoothingFactor', 0), ...
-        'LineWidth', 2, 'Color', [0.3 0.3 0.3]); hold on;
-
-    % Formatting
-    ylim([0.28 0.82]);
-    xlim([1 11]);
-    xlabel('# phns from word onset');
-    ylabel('probability of sonorant');
-    xline(6, 'LineWidth', 2, 'LineStyle','--');
-    title(titles{s})
-    box off;
-    
-    set(gca, 'FontSize', 15, 'Xtick', 1:5:11, ...
-        'Xticklabels', split(num2str(-5:5:5)));
-    legend({'Word', 'Syllable'});
-end
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
