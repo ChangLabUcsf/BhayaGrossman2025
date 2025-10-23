@@ -64,6 +64,33 @@ end
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
+%% Info about participant neural responses across languages
+
+% how many electrdes are responsive to speech in both languages
+blang = all(sent_encoding.type, 2); % when both languages are sig
+disp(['Both languages: ' num2str(sum(blang)) ', ' ...
+    num2str((sum(blang)/height(sent_encoding))*100) '%']);
+
+% for each subject, identify the percentage of electrodes that are responsive to both languages
+perc = nan(length(unique(sent_encoding.SID)), 1);
+ctr = 1;
+for s = unique(sent_encoding.SID)'
+    sid = s{1};
+    idx = strcmp(sent_encoding.SID, sid);
+    blang = all(sent_encoding.type(idx, :), 2);
+    perc(ctr) = sum(blang)/sum(idx);
+    disp([sid ': ' num2str(sum(blang)) ', ' ...
+        num2str((sum(blang)/sum(idx))*100) '%']);
+    ctr = ctr+1;
+end
+
+disp(['Median: ' num2str(median(perc)*100) '%']);
+disp(['STD: ' num2str(std(perc)*100)]);
+
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    betaInfo* *encoding* allidx fthresh Dcons *wrd*;
+
+
 %% B/C - Single example subject response magnitudes, example electrode
 
 nativeSIDs = {'EC100'};
@@ -72,9 +99,8 @@ cm = [0 0 1; 1 0 0];
 
 bins = 15;
 % elecs = 203; % for EC183 , 156, 160
-%elecs = 137; % for EC172
+% elecs = 137; % for EC172
 elecs = 22; % for EC100 % [3, 54]; % for EC214
-%elecs = [71, 86]; % for HS11
 % SID: [183, 214, 186, 195, 105]
 % Elec: [72, 245, 212, 203, 63]
 
@@ -101,8 +127,6 @@ for l = 1:2
     plotNativeElec(nativeSIDs, desel, 1, imgall);
 end
 
-% elecs = [22, 150];
-% Plot example electrodes
 for sid = nativeSIDs
     SID = sid{1};   
 
@@ -118,7 +142,7 @@ for sid = nativeSIDs
 end
 
 for i = 1:2
-    subplot(2, 1, i);
+    subplot(1, 2, i);
     xlim([-0.5 2.15]);
     ylim([-0.5 4.5]);
     yticks([0 4]);
@@ -285,8 +309,8 @@ for h = {'lh', 'rh'}
         
                     native_xyz = [native_xyz; elecmatrix(intersect(ch_sel, ch_sid),:)]; 
                     anat_xyz = [anat_xyz; anat(intersect(ch_sel, ch_sid))];
-                    numsid=numsid+1;
                 end
+                numsid=numsid+1;
             end
         end
 
@@ -347,6 +371,8 @@ title('Foreign');
 xlabel('Count');
 ylabel('Anatomical Area');
 set(gca, 'FontSize', 14);
+xticks([0 600]);
+
 box off;
 
 subplot(1, 2, 2);
@@ -360,8 +386,9 @@ xlabel('Count');
 ylabel('Anatomical Area');
 set(gca, 'FontSize', 14);
 sgtitle('Speech-responsive areas');
+xticks([0 600]);
+xlim([0 600]);
 box off;
-
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
@@ -455,7 +482,7 @@ end
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
-%% TRFWEIGHTS: G/H - Correlating (s)TRF weights across corpora
+%% G/H - Correlating (s)TRF weights across corpora
 
 corpora = {{'timit', 'dimex'}, {'timit', 'asccd'}};
 %modelnames = {'onset_aud'};
@@ -477,7 +504,6 @@ maxfreq = nan(height(sent_encoding), 2);
 maxrsq = nan(height(sent_encoding), 1);
 minrsq = nan(height(sent_encoding), 1);
 thresh = 0.001;
-plotpie = 0;
 
 % window is 5 time points around the max time point for correlation
 windsz = 2;
@@ -630,37 +656,6 @@ for s =  unique(sent_encoding.SID)'
     end
 end
 
-corrthresh = 0.5;
-if plotpie
-    %show pie for correlation threshold
-    idx = minrsq>0.1;
-    
-    figure;
-    subplot(2, 3, [1, 2, 3]);
-    labels = num2str(crosstab(corrstrf(idx)>corrthresh));
-    p = pie(crosstab(corrstrf(idx)>corrthresh), [1, 1], labels);
-    p(3).FaceColor = [159, 134, 192]/256;
-    p(3).EdgeColor = 'none';
-    p(1).FaceColor = [224, 177, 203]/256;
-    p(1).EdgeColor = 'none';
-    p(2).FontSize = 13;
-    p(4).FontSize = 13;
-    legend({'r<=0.5', 'r>0.5'});
-
-    for ls = [1, 2, 3]
-        subplot(2, 3, ls+3)
-        labels = num2str(crosstab(corrstrf(idx&sent_encoding.ls==ls)>corrthresh));
-        p = pie(crosstab(corrstrf(idx&sent_encoding.ls==ls)>corrthresh), ...
-            [1, 1], labels);
-        p(3).FaceColor = [159, 134, 192]/256;
-        p(3).EdgeColor = 'none';
-        p(1).FaceColor = [224, 177, 203]/256;
-        p(1).EdgeColor = 'none';
-        p(2).FontSize = 13;
-        p(4).FontSize = 13;
-    end
-end
-
 % show imagesc of TRF weights comparing the two corpora
 % find nan rows for alleng and allsp
 if ~strcmp(modelnames{1}, 'onset_aud')
@@ -758,9 +753,6 @@ yticks(0:2:6);
 ax = gca();
 ax.YAxis(2).TickLabelColor = [0.7, 0.1, 0.7]; 
 ax.YAxis(2).Color = [0.7, 0.1, 0.7]; 
-% ax.YAxis(2).
-
-% yticks([]);
 yyaxis left;
 ylabel('Probability Density');
 box off;
@@ -1018,23 +1010,12 @@ for h = {'lh', 'rh'}
                             sum(speech_resp_tmp(idx, 1) - speech_resp_tmp(idx, 2))];
                     end
                 end
-                numsid=numsid+1;
-            else
-                disp(['Missing...' sid]);
             end
+            numsid=numsid+1;
         end
     end
 
-    % ctr = 1; 
-    % for k = anatomy_diff.keys()
-    %     subplot(3, 5, ctr);
-    %     histogram(anatomy_diff(k{1}));
-    %     title(k{1});
-    %     set(gca, 'FontSize', 15);
-    %     ctr=ctr+1;
-    %     xlim([-5 5]);
-    %     ylim([0 13]);
-    % end
+    
 
     % number of subjects
     disp(['Number of subjects: '  num2str(numsid)]);
@@ -1162,19 +1143,20 @@ for ls = [1, 2, 3]
     % plot single language (Spanish or Mandarin)
     scatter3(peakresp(idx & sp_type, 2), peakresp(idx & sp_type, 1), find(idx&sp_type), ...
         25, cols(2, :), 'MarkerFaceAlpha', 0.6); hold on;
-
     view(2);
 
     % Calculate correlation coefficient
     [rho, pval] = corr(peakresp(idx, 2), peakresp(idx, 1), 'rows', 'pairwise');
-    text(0.5, 4, ['r(' num2str(sum(idx)) ')=' num2str(rho, 2)], 'FontSize', 15);
-    text(0.5, 3.5, ['p=' num2str(pval, 2)], 'FontSize', 15);
+    text(0.5, 4, ['r=' num2str(rho, 2) ',' getSigStr(pval, 1)], 'FontSize', 15);
+    disp(['r(' num2str(sum(idx)) ')=' num2str(rho, 2) ', ' getSigStr(pval, 2)]);
 
     ylabel({'English peak', 'HFA (z)'});
     xlabel({'Spanish peak', 'HFA (z)'});
     set(gca, 'FontSize', 13);
     ylim([0 4.5]);
     xlim([0 4.5]);
+    yticks(0:2:4);
+    xticks(0:2:4);
     title(titles{ctr}, 'FontWeight', 'normal');
 
     % Reference line
@@ -1182,12 +1164,9 @@ for ls = [1, 2, 3]
     h.LineWidth = 2;
     h.Color = 'k';
     h.HandleVisibility = "off";
-    %legend({'Both languages', 'Single language'}, 'Location', 'northwest');
 
     % Show count of native, foreign, both counts
     subplot(2, 4, ctr+4);
-    % histogram(peakresp(idx, 2)-peakresp(idx, 1), EdgeColor='none', ...
-    %     FaceColor = [0.4, 0.4, 0.4]); 
     if ls == 2
         h=bar([sum(idx & type), sum(idx & en_type), ...
             sum(idx & sp_type)]'./sum(idx), 'FaceColor', 'flat', ...
@@ -1199,10 +1178,6 @@ for ls = [1, 2, 3]
     end
     cols = [0.6 0.0 0.6; 0 0 1; 1 0 0;]';
     h.CData = cols';
-    % for i = 1:3
-    %     h(i).FaceColor = cols(i, :);
-    % end
-    % xline(0);
     xticks(1:3);
     xticklabels({'Both', 'Native', 'Foreign'});
     ylabel('Proportion');
@@ -1228,7 +1203,7 @@ foreign_peak = mean(sent_encoding.maxresp(~npidx & ~all(sent_encoding.type,2), :
 allpeak = [both_peak; native_peak; foreign_peak];
 group = [ones(size(both_peak)); 2*ones(size(native_peak)); 3*ones(size(foreign_peak))];
 boxplot(allpeak, group, 'Colors', [0.6 0.0 0.6; 0 0 1; 1 0 0], 'Symbol', 'o');
-yticks(0:4);
+yticks(0:2:4);
 ylabel('HFA peak (z)');
 % remove bold
 title('Across participants', 'FontWeight', 'normal');
@@ -1248,7 +1223,7 @@ disp('Native vs. Foreign');
 disp(ranksum(native_peak, foreign_peak));
 disp(['n = (' num2str(length(native_peak)) ', ' num2str(length(foreign_peak)) ')']);
 
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+clearvars -except *all subj *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
 %% TRF: S4 - Cross-language transfer of TRF weights
@@ -1475,7 +1450,7 @@ for h = {'lh', 'rh'}
         if strcmp(hemi, 'lh')
             cortex = imgall.(SIDs{1}).img_mni.cortex;
         else
-            cortex = imgall.(SIDs{3}).img_mni.cortex;
+            cortex = imgall.(SIDs{6}).img_mni.cortex;
         end
 
         subplot(1, 3, plt(native+1))

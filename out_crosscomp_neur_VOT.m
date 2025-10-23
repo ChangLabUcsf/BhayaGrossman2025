@@ -323,14 +323,18 @@ for t = 1:2
     span = stats_y{1, t};
     eng = stats_y{2, t};
 
+    p = nan(1, vot_max-2);
+    n = nan(1, vot_max-2);
     for v = 1:vot_max-2
-        [p, ~] = ranksum(span(:, v), eng(:, v));
-        disp(p)
-        if p < 0.05
+        [p(v), ~] = ranksum(span(:, v), eng(:, v));
+        n(v) = size(span(:, v), 1);
+        if p(v) < 0.05
             subplot(1, 2, t)
-            text(v*10, 1.05, getSigStr(p, 1), 'FontSize', 20);
+            text(v*10, 1.05, getSigStr(p(v), 1), 'FontSize', 20);
         end
     end
+    % disp(n);
+    disp(p);
 end
 legend({'Spanish', 'English', 'Bilingual'});
 
@@ -415,20 +419,20 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
 %% D - Proportion of V+ electrodes across participants
 
 figure;
-subplot(1, 2, 1)
-b=bar([1, 2], [crosstab(vot_encoding.rho(vot_encoding.ls==2)<0)./length(vot_encoding.rho(vot_encoding.ls==2)), ...
-    crosstab(vot_encoding.rho(vot_encoding.ls==1)<0)./length(vot_encoding.rho(vot_encoding.ls==1))]');
-b(1).FaceColor = [0.1 0 0.8];
-b(2).FaceColor = [0.8 0.1 0.1];
-
-xticklabels({'English', 'Spanish', 'Bilingual'});
-yticks([0 0.5 1])
-ylim([0 1])
-ylabel('% of electrodes');
-xlabel('Subject group');
-set(gca, 'FontSize', 15);
-legend('V-', 'V+');
-box off;
+% subplot(1, 2, 1)
+% b=bar([1, 2], [crosstab(vot_encoding.rho(vot_encoding.ls==2)<0)./length(vot_encoding.rho(vot_encoding.ls==2)), ...
+%     crosstab(vot_encoding.rho(vot_encoding.ls==1)<0)./length(vot_encoding.rho(vot_encoding.ls==1))]');
+% b(1).FaceColor = [0.1 0 0.8];
+% b(2).FaceColor = [0.8 0.1 0.1];
+% 
+% xticklabels({'English', 'Spanish', 'Bilingual'});
+% yticks([0 0.5 1])
+% ylim([0 1])
+% ylabel('% of electrodes');
+% xlabel('Subject group');
+% set(gca, 'FontSize', 15);
+% legend('V-', 'V+');
+% box off;
 
 vplus_prct = cell(1, 4);
 vplus_cnt = cell(1, 4);
@@ -443,13 +447,13 @@ for s = unique(vot_encoding.SID)'
 end
 xlim([0.5 2.5]);
 
-subplot(1, 2, 2)
+subplot(1, 1, 1)
 for ls = [1, 2]
     rng(1);
     jitter = rand(length(vplus_prct{ls}), 1)*0.2; 
-    sz = vplus_cnt{ls}*10;
+    sz = vplus_cnt{ls}*20;
     scatter(ones(length(vplus_prct{ls}), 1)*ls-0.1+jitter, ...
-        vplus_prct{ls}, sz, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.4); hold on;
+        vplus_prct{ls}, sz, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.8); hold on;
     b = boxchart(ones(length(vplus_prct{ls}), 1)*ls, vplus_prct{ls});
     b.BoxFaceColor = [0.7 0.7 0.7];
     b.WhiskerLineStyle = 'none';
@@ -507,10 +511,17 @@ for ls = 1:2
     end
     
     [mni_lh] = plotMNIElec(unique(vot_encoding.SID), desel, 'lh', 0, 1, imgall);
+    l = light;
+    view(270, 0);   
+    set(l,'Style', 'infinite', 'Position',[-1 0 0],'Color',[0.8 0.8 0.8]);
 
     title(ls)
     
     [mni_rh] = plotMNIElec(unique(vot_encoding.SID), desel, 'rh', 0, 1, imgall);
+    l = light; 
+    view(90, 0);
+    set(l,'Style', 'infinite', 'Position',[1 0 0],'Color',[0.8 0.8 0.8]);
+
     title(ls)
     count(ls, :) = [sum(mni_lh.cond>0)/length(mni_lh.cond), ...
         sum(mni_rh.cond>0)/length(mni_rh.cond)];
@@ -524,9 +535,14 @@ for i = 1:2
     b(i).EdgeColor = 'none';
 end
 colormap();
+box off;
 set(gca, 'FontSize', 15, 'Xtick', 1:2, 'Xticklabel', {'LH', 'RH'});
-leg = legend({'Spanish native', 'English native'}, 'Location', 'northwest   ');
+leg = legend({'Spanish native', 'English native'}, 'Location', 'northeast   ');
 htitle = get(leg,'Title');
+ylabel('% V+ electrodes');
+ylim([0, 1])
+yticks([0 1]);
+yticklabels({'0', '100'});
 set(htitle,'String','Subject group')
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...

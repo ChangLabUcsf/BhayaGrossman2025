@@ -56,7 +56,7 @@ function [en_mresp, sp_mresp] = plotStitchedSentence(elec, sent_encoding, swind,
             [fvals(fvals>fthresh)]', 'filled');
             colormap(flipud(gray));
         else
-            subplot(2, 1, 1);
+            subplot(1, 2, 1);
             % Plot the response traces
             sentenceERP(sp_mresp, sp_sem, cols(1, :), bef, ...
                 [swind, ewind], gap); hold on; %[0.19 0.53 0.74]
@@ -64,7 +64,7 @@ function [en_mresp, sp_mresp] = plotStitchedSentence(elec, sent_encoding, swind,
             %     highlightERPWindow(wind{2}./100-bef, cols(1, :));
             % end
         
-            subplot(2, 1, 2);
+            subplot(1, 2, 2);
             sentenceERP(en_mresp, en_sem, cols(2, :), bef, ...
                 [swind, ewind], gap); %[0.83 0.24 0.30]
             % if ~isempty(wind{1})

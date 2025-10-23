@@ -201,7 +201,7 @@ subplot(1, 3, 1);
 % Create a scatter plot for the accuracy data
 randjitter = @(x) x + randn(size(x))*0.05;
 scatter(randjitter(ones(size(perfmetric, 2), 1)), perfmetric(1, :) * 100, ...
-    45, 'filled', 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k'); hold on;
+    45, 'filled', 'MarkerFaceColor', [0.5 0.5 0.5], 'MarkerEdgeColor', 'k'); hold on;
 scatter(randjitter(ones(size(perfmetric, 2), 1) * 2), perfmetric(2, :) * 100, ...
     45, 'MarkerEdgeColor', 'k');
 % Overlay a black box plot
@@ -209,9 +209,10 @@ boxplot(perfmetric' .* 100, 'Colors', 'k', 'Labels', {'Spanish', 'English'}, 'Wi
 text(1, 80, num2str(median(perfmetric(1, :))), 'FontSize', 14);
 text(2, 50, num2str(median(perfmetric(2, :))), 'FontSize', 14);
 
-plot([0.75 1.25], [1/length(dimex_vow) 1/length(dimex_vow)].*100, 'Color', 'k', 'LineWidth', 2);
+plot([0.75 1.25], [1/length(dimex_vow) 1/length(dimex_vow)].*100, ...
+    'Color', 'k', 'LineWidth', 2, 'LineStyle', '--');
 plot([1.75 2.25], [1/length(timit_vow) 1/length(timit_vow)].*100, ...
-    'Color', 'k', 'LineWidth', 2);
+    'Color', 'k', 'LineWidth', 2, 'LineStyle', '--');
 text(1, (1/length(dimex_vow))*100, 'chance %', 'FontSize', 14);
 text(2, (1/length(timit_vow))*100, 'chance %', 'FontSize', 14);
 ylim([0 100]);
@@ -327,7 +328,8 @@ for ctr = 1:2
         tmp_tbl.hemi = repmat(length(vowel_decode_table.hemi{s}), nreps, 1);
         lme_tbl = [lme_tbl; tmp_tbl];
     end
-    lme = fitlme(lme_tbl,'auc~1+native+(1|elecs)+(1|hemi)');
+    lme = fitlme(lme_tbl,'auc~native+(1|elecs)+(1|hemi)');
+    disp(lme)
     text(1.5, 0.8, getSigStr(lme.Coefficients.pValue(2), 1), 'FontSize', 20);
 
     xticks(1:2);
@@ -388,19 +390,20 @@ for corp = 1:2
     set(gca, 'FontSize', 13);
     box off;
     disp(upper(corpus));
-    disp('Corrected---------')
+    disp('Corrected-----------')
     corrected_p = p'<(0.05/height(vowel_decode_table)); 
     disp(['Num sig in native: ' num2str(sum(ls==0&corrected_p)/sum(ls==0))])
     disp(['Num sig in foreign: ' num2str(sum(ls==1&corrected_p)/sum(ls==1))])
-    disp('Uncorrected---------')
-    uncorrected_p = p'<0.01; 
-    disp(['Num sig in native: ' num2str(sum(ls==0&uncorrected_p)/sum(ls==0))])
-    disp(['Num sig in foreign: ' num2str(sum(ls==1&uncorrected_p)/sum(ls==1))])
+    % disp('Uncorrected---------')
+    % uncorrected_p = p'<0.01; 
+    % disp(['Num sig in native: ' num2str(sum(ls==0&uncorrected_p)/sum(ls==0))])
+    % disp(['Num sig in foreign: ' num2str(sum(ls==1&uncorrected_p)/sum(ls==1))])
 
     % do a single tailed t-test for each language
     [p, h] = ranksum(medianauc(ls==0), medianauc(ls==1));
     title(getSigStr(p, 1));
     disp(['Ranksum for ' corpus ': p = ' num2str(p)]);
+    disp(['Number of obs n = ' num2str(sum(ls==1)) ', ' num2str(sum(ls==0))])
     disp(['Native mean AUC = ' num2str(mean(medianauc(ls==0)))]);
     disp(['Foreign mean AUC = ' num2str(mean(medianauc(ls==1)))]);
 end
@@ -491,13 +494,13 @@ for vowpair = incl_vows
             scatter(ctr+1+randjitter(0), mean(vowel_decode_table.(field){s}), numel*2, 'filled', ...
                 'MarkerFaceColor', 'r', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.5); hold on;
         end
-        vowel_decode_table.medianAccuracy(s) = mean(vowel_decode_table.(field){s});
+        vowel_decode_table.meanAccuracy(s) = mean(vowel_decode_table.(field){s});
         vowel_decode_table.native(s) = ~native;
         vowel_decode_table.hemi(s) = {imgall.(vowel_decode_table.SID{s}).hemi};
     end
 
     % add boxplot
-    boxplot(vowel_decode_table.medianAccuracy, vowel_decode_table.native, ...
+    boxplot(vowel_decode_table.meanAccuracy, vowel_decode_table.native, ...
         'Colors', 'k', 'Positions', [ctr ctr+1]);
     
     % look at difference between languages (lme)
@@ -513,6 +516,8 @@ for vowpair = incl_vows
         lme_tbl = [lme_tbl; tmp_tbl];
     end
     lme = fitlme(lme_tbl,'auc~1+native+(1|elecs)+(1|hemi)');
+    disp(lme)
+    disp('------------------------------')
     text(ctr+0.5, 0.75, getSigStr(lme.Coefficients.pValue(2), 1), 'FontSize', 15);
     ctr = ctr+3;
 end
@@ -555,7 +560,7 @@ for vowpair = incl_vows
     for s = 1:height(vowel_decode_table)
         numel = length(vowel_decode_table.Electrodes{s});
         
-        randjitter = @(x) x + randn(size(x))*0.05;
+        randjitter = @(x) x+randn(size(x))*0.05;
         vowel_decode_table.medianAccuracy(s) = mean(vowel_decode_table.(field){s});
 
         native = vowel_decode_table.Language(s) == 2;
@@ -571,8 +576,9 @@ for vowpair = incl_vows
 
     % look at difference between languages (ranksum)
     [p, h] = ranksum(vowel_decode_table.medianAccuracy(vowel_decode_table.native), ...
-        vowel_decode_table.medianAccuracy(~vowel_decode_table.native));
+        vowel_decode_table.medianAccuracy(~vowel_decode_table.native), "tail", "both");
     disp(['Ranksum for ' corpus ': p = ' num2str(p)]);
+    disp(['n='  num2str(sum(vowel_decode_table.native)) ',' num2str(sum(~vowel_decode_table.native))]);
     disp(['Spanish mean AUC = ' num2str(mean(vowel_decode_table.medianAccuracy(~vowel_decode_table.native)))]);
     disp(['English mean AUC = ' num2str(mean(vowel_decode_table.medianAccuracy(vowel_decode_table.native)))]);
    
@@ -588,6 +594,7 @@ for vowpair = incl_vows
     if ctr==2
         ylabel('Classifier AUC');
     end
+    text(1, 0.7, getSigStr(p, 1));
 
     set(gca, 'FontSize', 15);
     box off;

@@ -162,8 +162,15 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
 
 thresh = 0.001;
 
-features = {'wordO', 'wordF', 'wordL', 'surp', 'word+surp'}; % word+surp
-titles = { 'Boundary',  'Frequency', 'Length', 'Phoneme Surprisal', 'Both'};
+features = {'wordO', 'wordF', 'wordL', 'surp'}; % word+surp
+titles = { 'Boundary',  'Frequency', 'Length', 'Phoneme Surprisal'};
+subplts = {1, 2, 3, 4}; % add 5 here to see word+surprisal
+
+% Uncomment for calculating both word+surp unique variance
+% features = {'word+surp'};
+% titles = {'Both'};
+% subplts = {1}; % add 5 here to see word+surprisal
+
 fields = {'eng_uv_all', 'sp_uv_all'}; 
 
 ctr = 1;
@@ -205,7 +212,7 @@ for feat = features
 end
 
 % Combine the consonant and vowel features into one
-subplts = {1, 2, 3, 4}; % add 5 here to see word+surprisal
+
 ynat_pie = nan(length(subplts), 2);
 ynon_pie = nan(length(subplts), 2);
 
@@ -324,11 +331,14 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
 
 thresh = 0.001;
 
+% To test figure features
 features = {'peakrate', 'formant', 'consonant'};
 titles = {'PeakRate', 'Vowel Formants', 'Consonant'};
 
-% features = {'pitch', 'env'};
-% titles = {'Pitch', 'Envelope'};
+% Uncomment to test pitch & env
+features = {'pitch', 'env'};
+titles = {'Pitch', 'Envelope'};
+
 % features = {'bisurp', 'trisurp'};
 % titles = {'Biphone', 'Triphone'};
 fields = {'eng_uv_all', 'sp_uv_all'}; 

@@ -576,7 +576,7 @@ colormap([1 1 1; flipud(inferno(30))]);
 % remove all electrodes with no significant windows
 electbl = electbl(electbl.dimex_contigsig>5 | electbl.timit_contigsig>5, :);
 
-figure('Position', [100, 300, 550, 300], 'renderer', 'painters');
+figure('Position', [100, 300, 550, 300], 'Renderer', 'painters');
 % make boxchart for each condition
 idx = electbl.natcontig>5 & electbl.forcontig>5;
 boxchart(ones(size(electbl.natcontig(idx), 1), 1), [electbl.natcontig(idx)], ...
