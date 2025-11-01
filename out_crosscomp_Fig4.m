@@ -117,6 +117,7 @@ for t = 1 % Type
         h.MarkerStyle = '.';
         h.MarkerColor = 'k';
         hold on;
+        rng(2)
         scatter(randn(size(plt, 2), 1)*0.1+c-0.05, plt(c, :), 25, 'filled', ...
             cols{c});
         disp(['Median AUC for boxplot: ' num2str(median(plt(c, :))) ...
@@ -191,19 +192,21 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
 % highambig = 'msdh0_si2240'; % try another
 % lowambig = 'mrew1_si2130'; % this bother
 % % wrdidx = find(strcmp(Dwrd.sentid, highambig));
-wrdidx = [1832, 1676];
+% wrdidx = [1832, 1676];
 maxnum = 7;
 Swrd = TDwrd;
+wrdidx = [320; 1524]; % TIMIT, low, high AAI
+% wrdidx = [3514; 3098];
 
-% % find 5 highest and 5 lowest AAI that are also word onsets
-[~, idx] = sort(Swrd.ambiguity, 'descend');
-wrdidx = idx(Swrd.wordOns(idx)>0);
-wrdidx = wrdidx(1:maxnum);
-
-% find 5 lowest AAI that are also word onsets
-[~, idx] = sort(Swrd.ambiguity, 'ascend');
-wrdidx = [wrdidx; idx(Swrd.wordOns(idx)>0)];
-wrdidx = wrdidx(1:maxnum*2);
+% find 5 highest and 5 lowest AAI that are also word onsets
+% [~, idx] = sort(Swrd.ambiguity, 'descend');
+% wrdidx = idx(Swrd.wordOns(idx)>0);
+% wrdidx = wrdidx(1:maxnum);
+% 
+% % find 5 lowest AAI that are also word onsets
+% [~, idx] = sort(Swrd.ambiguity, 'ascend');
+% wrdidx = [wrdidx; idx(Swrd.wordOns(idx)>0)];
+% wrdidx = wrdidx(1:maxnum*2);
 
 xdata = -0.5:0.01:0.5;
 % show spectrogram, and envelope and text
@@ -237,7 +240,7 @@ for wrd = wrdidx'
 
     xlim([-0.2 0.2]);
     xticks([-0.2 0 0.2]);
-    sgtitle([trial.precword{1} ' | ' trial.currword{1} ' ' ...
+    sgtitle([num2str(wrd) ' ' trial.precword{1} ' | ' trial.currword{1} ' ' ...
         'AAI=' num2str(trial.ambiguity(1))]);
 end
 
@@ -250,7 +253,7 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
 befaft = [0.5 0.5];
 x = -befaft(1):0.01:befaft(2);
 
-colors = getColorsCrossComp(1);
+% colors = getColorsCrossComp(1);
 colors = [0.2 0.2 0.2; 0.2 0.2 0.2];
 addpath(genpath('shadederror/'))
 

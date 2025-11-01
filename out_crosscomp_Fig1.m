@@ -599,59 +599,6 @@ for s =  unique(sent_encoding.SID)'
                 sent_encoding.sp_base_rsq(e));
             minrsq(e) = min(sent_encoding.en_base_rsq(e), ...
                 sent_encoding.sp_base_rsq(e));
-        
-            debug = 0;
-            % Example electrodes from above (EC100, 22 / 150)
-            if debug && startsWith(SID, 'HS') && minrsq(e)>0.1
-                % (corrstrf(e)>0.9) && minrsq(e)>0.15
-                % ismember(e, [184, 120, 133, 136, 137, 473, 864, 1125, 390])
-                % (corrstrf(e)>0.3 && corrstrf(e)<0.6 && minrsq>0.15)
-
-                figure;
-                subplot(2, 6, 1);
-                plot(x, 1:length(x), 'LineWidth', 2, 'Color',cols(2, :));
-                set(gca, 'XDir', 'reverse');
-                ylim([1 length(x)+1]);
-                hold on;                
-
-                % Plot the STRF beta weights for the first language
-                subplot(2, 6, [2, 3]);
-                imagesc(squeeze(meanStrf(1, :, :, el)));
-                set(gca, 'YDir', 'normal');
-                xline(wind(1));
-                xline(wind(end));
-                title('timit');
-                
-                if strcmp(modelnames{1}, 'onset_aud')
-                    yticks([1 80]);
-                    yticklabels({'0.01', '8'});
-                    ylabel('frequency (kHz)')
-                end
-
-                subplot(2, 6, 4);
-                plot(z, 1:length(x), 'LineWidth', 2, ...
-                    'LineStyle', '-', 'Color', cols(1, :));
-                set(gca, 'XDir', 'reverse');
-                hold on; 
-                ylim([1 length(x)+1])
-        
-                % Plot the STRF beta weights for the second language
-                subplot(2, 6, [5, 6]);
-                imagesc(squeeze(meanStrf(2, :, :, el)));
-                set(gca, 'YDir', 'normal');
-                xline(wind(1));
-                xline(wind(end));
-                title('dimex');
-                colormap(inferno);
-                yticks([]);
-                sgtitle([num2str(corrstrf(e)) ', ' SID ', ' ...
-                    num2str(sent_encoding.el(e))]);
-
-                % Plot the erp response
-                subplot(2, 6, [ 7, 8, 9 10, 11, 12]);
-                plotStitchedSentence(e, sent_encoding, 150, 100, 0.5, 1);
-                title(['Language exp: ' num2str(sent_encoding.ls(e))]);
-            end  
         end
     end
 end
@@ -1237,7 +1184,7 @@ repsentName = {'s00104','s00804', 's01904', 's03004', 's05004', ...
     'mjdh0_si1984', 'mjmm0_si625'};
 figure;
 
-% Subjects with no repeated sentences for DIMEx so unable to calculate
+% Participants with no repeated sentences for DIMEx so unable to calculate
 % cross-language predictions / Mandarin participants
 SIDs(ismember(SIDs, {'EC252', 'EC152', 'HS8', 'HS9', 'HS10'})) = [];
 for samelang = {'dimex', 'timit'}
@@ -1363,8 +1310,6 @@ for samelang = {'dimex', 'timit'}
                     yticks([]);
                     sentidx = strcmp({sentdet(:).name},  out_cross(sent).name);  
                     title(join(sentdet(sentidx).wordList, ' '));
-
-
                 end                                                 
             end
         end
@@ -1414,18 +1359,11 @@ for i = 1:2
     title(titles{i}, 'FontWeight', 'normal');
     ylabel('Cross-trained R^2');
     xlabel('Same-trained R^2');
-
-    % subplot(2, 2, i+2);
-    % diff_native = diff_native(~isnan(diff_native));
-    % diff_foreign = diff_foreign(~isnan(diff_foreign));
-    % boxplot([diff_native; diff_foreign], [ones(size(diff_native)); ...
-    %     2*ones(size(diff_foreign))], ...
-    %     'Colors', [0 0 1; 1 0 0], 'Symbol', 'o');
-    % ylim([-0.2 0.4]);
-    % [~, p] = ttest2(diff_native, diff_foreign);
-    % text(1.5, 0.3, ['p=' num2str(p, 2)], 'FontSize', 15);
-    % ylabel('Cross-trained R^2 - Same-trained R^2');
 end
+
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    *encoding* allidx fthresh Dcons *wrd*;
+
 %% UNUSED - Electrode scatter across native only, foreign only, and both
 
 anat_counts = cell(2, 1);
@@ -1523,7 +1461,6 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
 %% Functions
-
 function [weights] = getTRFweights(SID, el, corpus, modelname, datapath)    
     [strf] = loadMultModelStrf(SID, modelname, corpus, datapath, 1);  
     weights = strf{1}.meanStrf(:, :, el);

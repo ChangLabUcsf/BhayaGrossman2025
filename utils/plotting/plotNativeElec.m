@@ -16,7 +16,6 @@ function [native_plot] = plotNativeElec(SIDs, desel, plot, imgall)
             
             x_add=15;
             % z dimension for specific subjects
-%             if strcmp(SID, 'EC172'), x_add=90; end
             if strcmp(hemi,'lh'), x_add=-10; end        
             if strcmp(SID, 'EC221'), x_add=-90; end
             % try 

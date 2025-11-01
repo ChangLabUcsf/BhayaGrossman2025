@@ -5,7 +5,9 @@ addpath(genpath('utils'))
 
 bef=20;
 aft=50;
+% edit this to point to the datapath
 datapath = 'data/';
+
 
 % Note - EC202 has no STG coverage
 [sSIDs, eSIDs, bSIDs, mSIDs, dSIDs] = getSIDinfo();
@@ -25,34 +27,35 @@ end
 
 %% load in patient language profile data (xlsx)
 
-english_profile = readtable('LanguageProfiles.xlsx', 'UseExcel',true, ...
+profiles = fullfile(datapath, 'LanguageProfiles.xlsx');
+english_profile = readtable(profiles, 'UseExcel',true, ...
     'Sheet','EnglishMono');
 % remove all rows where L1 is not English and monolingual
 english_profile = english_profile(strcmp(english_profile.L1, 'English'), :);
 english_profile = english_profile(strcmp(english_profile.Group, 'monolingual'), :);
 
 % load in spanish profile
-spanish_profile = readtable('LanguageProfiles.xlsx', 'UseExcel',true, ...
+spanish_profile = readtable(profiles, 'UseExcel',true, ...
     'Sheet','SpanishMono');
 % remove all rows where L1 is not Spanish and monolingual
 spanish_profile = spanish_profile(strcmp(spanish_profile.L1, 'Spanish'), :);
 spanish_profile = spanish_profile(strcmp(spanish_profile.Group, 'monolingual'), :);
 
 % load in mandarin profile
-mandarin_profile = readtable('LanguageProfiles.xlsx', 'UseExcel',true, ...
+mandarin_profile = readtable(profiles, 'UseExcel',true, ...
     'Sheet','MandarinMono');
 % remove all rows where L1 is not Mandarin and monolingual
 mandarin_profile = mandarin_profile(strcmp(mandarin_profile.L1, 'Mandarin'), :);
 mandarin_profile = mandarin_profile(strcmp(mandarin_profile.Group, 'monolingual'), :);
 
 % load in Spanish-English bilingual profile
-bilingual_profile = readtable('LanguageProfiles.xlsx', 'UseExcel',true, ...
+bilingual_profile = readtable(profiles, 'UseExcel',true, ...
     'Sheet','SEBilingual_Truncated');
 % remove all rows where L1 is not Spanish or English and bilingual
 bilingual_profile = bilingual_profile(strcmp(bilingual_profile.Group, 'bilingual'), :);
 
 % load in bilingual-other profile
-other_profile = readtable('LanguageProfiles.xlsx', 'UseExcel',true, ...
+other_profile = readtable(profiles, 'UseExcel',true, ...
     'Sheet','Other_Fixed');
 % remove all rows where L1 is not Spanish or English and bilingual
 other_profile = other_profile(cellfun(@(x) ~isempty(x), other_profile.DominantLanguage), :);

@@ -336,8 +336,8 @@ features = {'peakrate', 'formant', 'consonant'};
 titles = {'PeakRate', 'Vowel Formants', 'Consonant'};
 
 % Uncomment to test pitch & env
-features = {'pitch', 'env'};
-titles = {'Pitch', 'Envelope'};
+% features = {'pitch', 'env'};
+% titles = {'Pitch', 'Envelope'};
 
 % features = {'bisurp', 'trisurp'};
 % titles = {'Biphone', 'Triphone'};
@@ -743,7 +743,6 @@ timit_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_timit_all.mat")
 dimex_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_dimex_all.mat");
 asccd_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_asccd_all.mat");
 
-figure;
 pthresh = 0.05;
 native_elecs = {dimex_elecs, timit_elecs, asccd_elecs}; % Spanish, English, Mandarin
 foreign_elecs = {timit_elecs, dimex_elecs, timit_elecs}; % English, Spanish, English

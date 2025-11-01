@@ -1,7 +1,6 @@
 % <% Ilina Bhaya-Grossman
 % 01.08.2022
 out_crosscomp_startup;
-SIDs = [sSIDs eSIDs bSIDs];
 % tps = 50:55;
 
 % selected electrodes
@@ -14,14 +13,14 @@ aft=50;
 
 % load word structures
 if ~exist('Dwrd', 'var')
-    load("data/Figure3/Figure3_DIMEXWrd.mat");
+    load([datapath 'Figure3/Figure3_DIMEXWrd.mat']);
 end
 
 if ~exist('TDwrd', 'var')
-    load("data/Figure3/Figure3_TIMITWrd.mat");
+    load([datapath 'Figure3/Figure3_TIMITWrd.mat']);
 end
 
-load('data/Figure2/Figure2_WordUniVar.mat');
+load([datapath 'Figure2/Figure2_WordUniVar.mat']);
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
@@ -230,55 +229,17 @@ disp(pval);
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd*;
 
-%% plotWORDERP: D/E - Native Brain and Example Word-Syllable ERP
+%% D/E - Native Brain and Example Word-Syllable ERP
 
 % find top 3 weighted electrodes and look at word erps
 f = figure; 
 pthresh = 0.01;
 
-% Spanish
-% SIDs = {'EC260', 'EC260', 'EC260', 'EC260', 'EC260', 'EC260', ...
-%     'EC260', 'EC260'}; % 'EC266', 'EC266'
-% els = [ 221, 192, 205, 206, 207, 208, 217, 214]; %236, 205 for EC260, 178, 175
-% Ec183
-% SIDs = {'EC100'};% 'EC100', 'EC100', 'EC100','EC100'};
-% els = [21];% 21,135, 22, 69, 70, 71, 118, 150]; %236, 205 for EC260, 178, 175
+% SIDs = {'EC183'}; % English example
+% els = 71;
 
-% English
-% SIDs = {'EC100'};% 'EC100', 'EC100', 'EC100','EC100'};
-% els = 132;%, 56, 135, 151, 22, 70, 71, 150]; %236, 205 for EC260, 178, 175
-
-SIDs = {'EC183'};% 
-els = 71;%
-
-% els = [185];%
-% SIDs = repmat({'EC163'}, length(els), 1);
-% 
-% els = [42, 57, 58, 72:74, 88];%
-% SIDs = repmat({'EC172'}, length(els), 1);
-
-% els = [132]; % 132, 135, 151, 22, 70, 71, 150, 236, 205
-% SIDs = repmat({'EC100'}, length(els), 1);
-
-% els = [71]; % , 56, 135, 151, 22, 70, 71, 150, 236, 205
-% SIDs = {'EC183'};
-
-% EC186, 207
-
-% Bilingual
-% EC163 - el55
-% SIDs = {'EC260'};% 'EC100', 'EC100', 'EC100','EC100'};
-% els = 221;%,135, 22, 70, 71, 150]; %236, 205 for EC260, 178, 175
-% 
-% % in figure
-% % EC100: 21, 71 EC183: 135, 71
-% EC186, 207
-% 
-% els = [55]; %236, 205 for EC260, 178, 175
-% SIDs = repmat({'EC163'}, length(els), 1);
-
-% Dwrd = loadDwrdMulti('dimex',  bef, aft, SIDs, dimex_details);
-% TDwrd = loadDwrdMulti('timit',  bef, aft, SIDs, timit_details);
+SIDs = {'EC100'}; % Spanish example
+els = 132;
 
 plotSingleTrial = 0;
 numel = length(els);
@@ -391,7 +352,6 @@ fields = {'sp_uv_all', 'eng_uv_all', '', 'sp_uv_all'};
 % uv feature order
 feats = { 'word+surp'}; % 'peakrate', 'formant', 'consonant', 'surp', 'word'
 
-fig = figure();
 for lang = 1:2
     for f = 1:length(feats)
         feat = feats{f};
@@ -422,13 +382,7 @@ for lang = 1:2
         desel.yval = arrayfun(@(x) wordsurp_encoding.(fields{lang})(x, index), ...
             1:height(wordsurp_encoding));
 
-        % Determine bin-edges linearly
-        % yvals = sort(desel.yval(desel.yval>0 & ismember(wordsurp_encoding.ls,ls)'));
-        % binedges = yvals(1:ceil(length(yvals)/8):length(yvals));
-        % [~, binedges] = discretize(desel.yval(desel.yval>0 & ismember(wordsurp_encoding.ls,ls)'), ...
-        %     length(desel.conds)-1);
-
-        % Construct manual, non-linear edges
+        % Construct non-linear edges
         binedges = [-1 0.0005:0.005:0.01 0.015:0.015:0.1];
         for s=unique(wordsurp_encoding.SID)'
             SID = s{1};
@@ -456,13 +410,7 @@ for lang = 1:2
         end
         desel.cols = [0 0 0;cls(3:end, :)];
 
-        % just for native brain and coverage
-        % desel.(SIDs{1}).elid=[];
-        % desel.(SIDs{1}).condition=[];
-
-        % desel.cols = [1 1 1; 212/256, 228/256 188/256; ...
-        %     54/256, 85/256, 183/256; 64/256 55/256 110/256]; 
-        nh = plotNativeElec(SIDs, desel, 1);
+        nh = plotNativeElec(SIDs, desel, 1, imgall);
 
         % only works if its on one subject
         l = light; 
@@ -475,103 +423,15 @@ for lang = 1:2
         end
 
         alpha 0.8;
-        % add a pie
-        axes('Position',[.6 .15 .3 .3])
-        p = pie([sum(nh.cond>1), sum(nh.cond==1)], [1 1]); 
-        p(1).FaceColor = [desel.cols(5, :)];
-        p(1).EdgeColor = 'none';
-        p(3).FaceColor = [0.6 0.6 0.6];
-        p(3).EdgeColor = 'none';
-        p(2).FontWeight = 'bold';
-        p(2).Color = 'w';
-        p(2).FontSize = 13;
-        p(4).FontWeight = 'bold';
-        p(4).Color = 'w';
-        p(4).FontSize = 13;
     end
 end
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* *wrd*;
 
-%% EC186: F - Single electrode quantity of Word-Syllable difference (takes a min to run)
+%% CHANGE THIS IN PROOF F - Single electrode quantity of Word-Syllable difference (takes a min to run)
 
-% need to preload all participants into Dwrd and TDwrd
-% TDwrd = loadDwrdMulti('timit', bef, aft, [eSIDs sSIDs], timit_details);
-% Dwrd = loadDwrdMulti('dimex',  bef, aft, [eSIDs sSIDs], dimex_details);
-
-% load in all speech responsive electrodes into a table
-electbl = loadSpeechResponsive(SIDs);
-% subset electbl to only sSIDs and eSIDs
-electbl = electbl(ismember(electbl.SID, [eSIDs, sSIDs]), :);
-
-% for each electrode, save the fvals and the longest contiguous significant window
-for swrd = {Dwrd, TDwrd}
-
-    Swrd = swrd{1};
-    % figure out which corpus
-    if startsWith(Swrd.sentid{1}, 's')
-        corpus = 'dimex';
-    else
-        corpus = 'timit';
-    end
-
-    % define all fields to add
-    fvalfield = strcat(corpus, '_fvals');
-    fthreshfield = strcat(corpus, '_fthresh');
-    longestsigfield = strcat(corpus, '_contigsig');
-
-    % for all unique SIDs
-    for s = [eSIDs, sSIDs]
-        SID = s{1};
-        sidx = strcmp(electbl.SID, SID);
-
-        dummy = struct();
-        nanidx = cellfun(@(x) isempty(x), Swrd.(SID));% ...
-            %| (Swrd.syll<2 & ~isnan(Swrd.syll));
-        dummy.(SID).resp = cat(3, Swrd.(SID){~nanidx});
-        
-        dummy.wordOns = Swrd.wordOns (~nanidx);
-        dummy.syllOns = ones(sum(~nanidx), 1);
-
-        % find electrodes in electbl for this sid
-        els = electbl.el(sidx);
-
-        [fvals, betweenVar, withinVar, df1, df2] = Fstat_TIMIT(...
-            dummy.(SID).resp(els, :, :), dummy.wordOns+1, [1, 2]);
-        corrected_pval = 0.01 / size(dummy.(SID).resp, 2);
-        fthresh = finv(1-corrected_pval, df1, df2); 
-        
-        electbl.(fvalfield)(sidx) = mat2cell(fvals, ones(length(els), 1), ...
-            size(fvals, 2));
-        electbl.(fthreshfield)(sidx) = mat2cell(fvals>fthresh, ones(length(els), 1), ...
-            size(fvals, 2));
-
-        % find the longest contiguous window
-        tmp = arrayfun(@(x) max(diff(find(fvals(x, :)<=fthresh))), ...
-            1:length(els), 'UniformOutput', false);
-        % collapse into an array, if a cell is empty replace with 0
-        sig = zeros(length(els), 1);
-        for i = 1:length(els)
-            if ~isempty(tmp{i})
-                sig(i) = tmp{i};
-            end
-        end
-        electbl.(longestsigfield)(sidx) = sig;
-    end
-end
-% get the native and foreign contiguous significant difference
-electbl.natcontig = [electbl.dimex_contigsig(ismember(electbl.SID, sSIDs)); ...
-    electbl.timit_contigsig(ismember(electbl.SID, eSIDs))];
-electbl.forcontig = [electbl.timit_contigsig(ismember(electbl.SID, sSIDs)); ...
-    electbl.dimex_contigsig(ismember(electbl.SID, eSIDs))];
-
-N = histcounts2(electbl.natcontig, electbl.forcontig, 0:2:40, 0:2:40);
-figure;
-imagesc(N);
-set(gca, 'YDir', 'normal');
-clim([0 30]);
-colormap([1 1 1; flipud(inferno(30))]);
+load([datapath 'Figure3/Figure3_WordSyllDiff.mat']);
 
 % remove all electrodes with no significant windows
 electbl = electbl(electbl.dimex_contigsig>5 | electbl.timit_contigsig>5, :);
@@ -590,7 +450,7 @@ ylim([0 40]);
 xlim([0.5 2.5]);
 yticks(0:20:40);
 yticklabels({'0', '0.2', '0.4'});
-ylabel('Contiguous signifcant difference (s)');
+ylabel('Contiguous significant difference (s)');
 xticks([1 2]);
 xticklabels({'Native', 'Foreign'});
 set(gca, 'FontSize', 13);
@@ -602,6 +462,13 @@ tbl=table();
 tbl.SID = [electbl.SID; electbl.SID];
 tbl.el = [electbl.el; electbl.el];
 tbl.ls = [electbl.ls; electbl.ls];
+for i = 1:height(electbl)
+    % find in wordsurp_encoding
+    idx = find(strcmp([wordsurp_encoding.SID], electbl.SID(i)), 1, 'first');
+    tbl.hemi(i) = strcmp(wordsurp_encoding.hemi(i), 'lh');
+end
+
+% find the hemisphere
 tbl.contig = [electbl.natcontig; electbl.forcontig];
 tbl.native = [ones(height(electbl), 1); zeros(height(electbl), 1)];
 lme = fitlme(tbl, 'contig ~ native + ls + (1|hemi) + (1|SID) + (1|el:SID)');
@@ -632,6 +499,9 @@ p(2).FontSize = 20;
 p(4).FontSize = 20;
 p(6).FontSize = 20;
 legend({'Native', 'Foreign', 'Both'}, 'Location', 'southeast');
+
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
 
 %% ----------------------- Supplementary Figures --------------------------
 %% S9A - Neural word boundary (both Spanish and English)
@@ -930,7 +800,7 @@ disp(['Median number of electrodes for TIMIT: ' num2str(med_timit) ...
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
 
-%% LOGISTIC: S10A - Acoustic cues to word boundary (boundary decoding)
+%% S10A - Acoustic cues to word boundary (boundary decoding)
 % timing = [5, 10, 20, 50]; 
 timing = 20;
 nreps = 20;
