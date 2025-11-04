@@ -25,38 +25,13 @@ function [electrodes, a]=ctmr_gauss_plot(cortex,electrodes,weights,hemi)
     
 %   Version 1.1.0, released 26-11-2009
 
-
-
-%load in colormap
-% load('loc_colormap')
-load('loc_colormap_thresh')
-% load('BlWhRdYl_colormap')
-% load('BlGyOrCp_colormap')
-% cm = flipud(cbrewer('div','RdGy',64));
-
+load('loc_colormap_thresh');
 brain=cortex.vert;
 v='l';
-% %view from which side?
-% temp=1;
-% while temp==1
-%     disp('---------------------------------------')
-%     disp('to view from right press ''r''')
-%     disp('to view from left press ''l''');
-%     v=input('','s');
-%     if v=='l'      
-%         temp=0;
-%     elseif v=='r'      
-%         temp=0;
-%     else
-%         disp('you didn''t press r, or l try again (is caps on?)')
-%     end
-% end
 
 if length(weights)~=length(electrodes(:,1))
     error('you sent a different number of weights than electrodes (perhaps a whole matrix instead of vector)')
 end
-%gaussian "cortical" spreading parameter - in mm, so if set at 10, its 1 cm
-%- distance between adjacent electrodes
 gsp=10; %zg edited from 50
 
 c=zeros(length(cortex(:,1)),1);
@@ -64,7 +39,6 @@ for i=1:length(electrodes(:,1))
     b_z=abs(brain(:,3)-electrodes(i,3));
     b_y=abs(brain(:,2)-electrodes(i,2));
     b_x=abs(brain(:,1)-electrodes(i,1));
-%     d=weights(i)*exp((-(b_x.^2+b_z.^2+b_y.^2).^.5)/gsp^.5); %exponential fall off 
     d=weights(i)*exp((-(b_x.^2+b_z.^2+b_y.^2))/gsp); %gaussian 
     c=c+d';
 end
@@ -80,31 +54,17 @@ set(gca,'CLim',[-max(abs(d)) max(abs(d))])
 l=light;
 colormap(cm);
 a.FaceColor = [0.9 0.9 0.9];
-%colormap(jet)
 lighting phong; %play with lighting...
-% material shiny;
-material dull;
-alpha 0.3;
+material shiny;
+% material dull;
+alpha 0.9;
 material([.3 .8 .1 10 1]);
-%material([.2 .9 .2 50 1]); %  BF: editing mesh viewing attributes
 a.HandleVisility = 'off';
 axis off
-
-%set(gcf,'Renderer', 'zbuffer','Position',[500 500 900 900]); % BF: added for lateral. view
-%set(gcf,'Renderer', 'zbuffer','Position',[400 400 500 900]); % BF: added for inf. view
-%set(gcf,'Renderer', 'zbuffer','Position',[400 400 950 550]); % BF: added figure size for movie 
-
-% if v=='l'
-if hemi=='lh'
-view(270, 0);
-% set(l,'Position',[-1 0 1])
-set(l,'Position',[-1 0 0],'Color',[0.8 0.8 0.8]);
-% elseif v=='r'
-elseif hemi=='rh'
-view(90, 0);
-% set(l,'Position',[1 0 1])
-set(l,'Position',[1 0 0],'Color',[0.8 0.8 0.8]);
+if strcmp(hemi, 'lh')
+    view(270, 0);
+    set(l,'Position',[-1 0 0],'Color',[0.8 0.8 0.8]);
+elseif strcmp(hemi, 'rh')
+    view(90, 0);
+    set(l,'Position',[1 0 0],'Color',[0.8 0.8 0.8]);
 end
-% %exportfig
-% exportfig(gcf, strcat(cd,'\figout.png'), 'format', 'png', 'Renderer', 'painters', 'Color', 'cmyk', 'Resolution', 600, 'Width', 4, 'Height', 3);
-% disp('figure saved as "figout"');

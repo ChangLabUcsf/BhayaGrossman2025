@@ -16,6 +16,6 @@ function [colors] = getColorsCrossComp(type)
             colors = nuclear(9);
             colors = colors(3:8, :);
         case 6 % bilingual colors
-            colors = [34 174 209; 43, 57, 144]./256; % Spanish / English
+            colors = [34 174 209; 43, 57, 144]./256; % English / Spanish
     end
 end

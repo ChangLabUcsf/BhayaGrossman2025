@@ -104,6 +104,7 @@ elecs = 22; % for EC100 % [3, 54]; % for EC214
 % SID: [183, 214, 186, 195, 105]
 % Elec: [72, 245, 212, 203, 63]
 
+titles = {'native', 'foreign'};
 for l = 1:2
     binedges = linspace(prctile(sent_encoding.maxresp(:, l), 5), ...
         prctile(sent_encoding.maxresp(:, l), 100), bins);
@@ -125,6 +126,19 @@ for l = 1:2
         desel.(SID).selid = elecs; %sent_encoding.el(idx);
     end
     plotNativeElec(nativeSIDs, desel, 1, imgall);
+
+    % only works if its on one subject
+    lght = light; 
+    if strcmp(imgall.(SIDs{1}).hemi, 'lh')  
+        view(270, 0);   
+        set(lght,'Style', 'infinite', 'Position',[-1 0 0],'Color',[0.8 0.8 0.8]);
+    else
+        view(90, 0);
+        set(lght,'Style', 'infinite', 'Position',[1 0 1],'Color',[0.8 0.8 0.8]);
+    end
+
+    % save eps of the brain file
+    % print(fullfile(['brain_images/Fig1_example_' titles{l} '.eps']), '-djpeg', '-vector', '-r600')
 end
 
 for sid = nativeSIDs
@@ -248,7 +262,7 @@ for h = {'lh', 'rh'}
         hold on
 
         PlotBrainSurface(cortex, hemi,'lateral');
-        alpha 0.9
+        alpha 1
         %light("Style","infinite","Position",[100 100 0]);
         
         % find density map of native speech, lateral side
@@ -356,8 +370,10 @@ for h = {'lh', 'rh'}
         end
         scatter3(native_xyz(:, 1)+x_add, native_xyz(:, 2), native_xyz(:, 3), ...
             round(native_hga*20), color, 'filled', 'MarkerFaceAlpha', 0.7);
-    end
+    end    
 end
+% save eps of the brain file
+% print(fullfile('brain_images/Fig1_all_foreignnative.eps'), '-djpeg', '-vector', '-r600')
 
 % Create horizontal bar charts for speech-responsive areas
 figure;

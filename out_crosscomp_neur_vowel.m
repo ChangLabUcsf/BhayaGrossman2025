@@ -24,8 +24,8 @@ clearvars -except *all* subj *vow* *details *SIDs datapath bef aft tps;
 SID = 'EC183'; 
 el = 121; 
 
-SID = 'EC222'; 
-el = 101; % 118 
+% SID = 'EC222'; 
+% el = 101; % 118 
 
 plotVowelErp(Dvow,SID, el, 'dimex', figure); 
 plotVowelErp(TDvow,SID, el, 'timit', figure);
@@ -604,211 +604,211 @@ end
 
 clearvars -except *all* subj *vow* *details *SIDs datapath bef aft tps;
 
-%% Neural decoding of vowel categories (LDA), pooled subject
-
-Svow = Dvow;
-corpus = 'dimex';
-incl_vows = dimex_vow;
-
-Svow = TDvow;
-corpus = 'timit';
-incl_vows = timit_vow;
-
-SIDs = {sSIDs, eSIDs};
-SIDsexcl = {'EC222'};
-for j = 1:2
-    SIDs{j} = SIDs{j}(~contains(SIDs{j}, SIDsexcl));
-end
-
-%Svow = addtoDD(Svow, corpus, bef, aft, [eSIDs sSIDs]);
-subj = 'monolingual';
-Svow.corpus = corpus;
-
-idx = ismember(Svow.vowel, incl_vows);  %  & Svow.stress==1
-load(['select_elec/out_elecs_speechtypeftest_bychan_' corpus '_all.mat']);
-
-% load in electrode responses
-bef = 20;
-aft = 50;
-nfolds = 15;
-
-% use neural window from onset to 300 ms after onset & baseline    
-tps = bef+10:bef+40;
-timelabel = '100-400ms'; % after onset
-
-Xboth = cell(1, 2);
-sidsboth = cell(1, 2);
-for lang = 1:length(SIDs)
-    % figure out total elecs for all SIDs in this language
-    total_elecs = sum(cellfun(@(x) length(allidx.(x)), SIDs{lang}));
-    % Initialize variables to store data for the table
-    Xboth{lang} = nan(total_elecs, length(tps), length(Svow.vowel(idx)));
-    sids = cell(total_elecs, 1);
-
-    ctr = 1;
-    for s = SIDs{lang}
-        SID = s{1};
-        % get speech responsive electrodes
-        disp(['loading subject....' SID])
-        elecs = allidx.(SID);
-        for e = 1:length(elecs)
-            Xboth{lang}(ctr, :, :) = squeeze(Svow.(SID).resp(elecs(e), tps, idx)); 
-            sids(ctr) = {SID};
-            ctr = ctr+1;
-        end
-    end
-
-    % find electrodes with > 50 NaN trials
-    if strcmp(corpus, 'dimex')
-        nanelecs = sum(squeeze(mean(isnan(Xboth{lang}), 2)), 2)>7000;
-    else
-        nanelecs = sum(squeeze(mean(isnan(Xboth{lang}), 2)), 2)>50;
-    end
-    if sum(nanelecs)>0
-        disp(['removing ' num2str(sum(nanelecs)) ' electrodes with > 50 NaN trials']);
-        Xboth{lang} = Xboth{lang}(~nanelecs, :, :);
-        sids = sids(~nanelecs);
-    end
-    sidsboth{lang} = sids;
-end
-
-% find trials in common across Xboth
-trls = cellfun(@(x) squeeze(any(isnan(x), [1, 2])), Xboth, 'UniformOutput', false);
-intertrls = trls{1} | trls{2};
-idxtmp = find(idx);
-idx(idxtmp(intertrls)) = 0;
-Xboth = cellfun(@(x) x(:, :, ~intertrls), Xboth, 'UniformOutput', false);
-
-% Initialize variables to store data for the table
-acc = cell(length(SIDs), 1);
-AUC = cell(length(SIDs), 1);
-n_trials = nan(length(SIDs), 1);
-n_classes = nan(length(SIDs), 1);
-SID_list = cell(length(SIDs), 1);
-elecs_list = cell(length(SIDs), 1);
-confmat = cell(length(SIDs), 1);
-confmat_ord = cell(length(SIDs), 1);
-tps_list = cell(length(SIDs), 1);
-lang_list = nan(length(SIDs), 1);
-for lang = 1:length(SIDs)
-
-    y = Svow.vowel(idx);
-    [X, ~, ~, y, unisids] = makeDataMatrix(Xboth{lang}, y, sidsboth{lang}, 2000, 4, 1);
-    % 950 if you require vowels to be stressed
-
-    % accuracy is heavily impacted by distribution, make sure trials
-    % between groups are largely the same
-    sidstr = join(unisids(:), ' ');
-    disp(['sids used...' sidstr{:}]);
-    disp(['num trials used...' num2str(length(y))]);
-
-    rng(2);
-    [~, ~, auc, ~, ~, acc_tmp, ~, y_hat] = lda(X', y, 1, [], tps, nfolds);
-
-    [C,order] = confusionmat(y, y_hat);
-
-    % Store data for the table
-    acc(lang) = {acc_tmp};
-    AUC(lang) = {auc};
-    n_trials(lang) = length(y);
-    n_classes(lang) = length(unique(y));
-    SID_list{lang} = unisids;
-    tps_list{lang} = tps;
-    lang_list(lang) = lang;
-    confmat(lang) = {C};
-    confmat_ord(lang) = {order};
-
-    % display mean AUC
-    disp(['ls = ' num2str(lang) ' mean AUC = ' num2str(mean(AUC{lang}))]);
-end
-
-% Create a table from the collected data
-vowel_decode_table = table(SID_list, acc, AUC, n_trials, n_classes, tps_list, lang_list, ...
-    confmat, confmat_ord, ...
-    'VariableNames', {'SID', 'Accuracy', 'AUC', 'NumTrials', 'NumClasses', ...
-    'TimePoints', 'Language', 'ConfMat', 'ConfMatOrd'});
-
-filename = [corpus '_vowel_decode_' subj '_' timelabel '_pooled.mat']; % dimex filename
-save([datapath 'ecog_decode/vowelCategory/' filename], 'vowel_decode_table');
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* inflections;
-
-%% Visualize pooled results from both corpora together
-  
-figure;
-subj = 'monolingual';
-timelabel = '100-400ms'; % after onset
-corpora = {'dimex', 'timit'};
-field = 'AUC';
-for ctr = 1:2
-    corpus = corpora{ctr};
-    subplot(1, 2, ctr);
-
-    % load in data
-    load([datapath 'ecog_decode/vowelCategory/' corpus ...
-        '_vowel_decode_' subj '_' timelabel '_pooled.mat']);
-
-    % plot the median AUC for each subject, colored by language
-    spkrs = {'Spanish', 'English'};
-    for s = 1:height(vowel_decode_table)
-        % numel = length(vowel_decode_table.Electrodes{s});
-        rng(2);
-        randjitter = @(x, y) y + randn(x, 1)*0.05;
-        numfolds = size(vowel_decode_table.(field){s}, 1);
-        if vowel_decode_table.Language(s) == 1
-            scatter(1+randjitter(numfolds, 0), vowel_decode_table.(field){s}, 100, 'filled', ...
-                'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5); hold on;
-            boxplot(vowel_decode_table.(field){s}, ...
-            'Positions', 1, 'Colors', 'k', 'Labels', spkrs{s});
-        else
-            scatter(2+randjitter(numfolds, 0), vowel_decode_table.(field){s}, 100, 'filled', ...
-                'MarkerFaceColor', 'r', 'MarkerFaceAlpha', 0.5); hold on;
-            boxplot(vowel_decode_table.(field){s}, ...
-            'Positions', 2, 'Colors', 'k', 'Labels', spkrs{s});
-        end        
-    end
-    
-    % look at difference between languages
-    [~, p] = ttest2(vowel_decode_table.(field){vowel_decode_table.Language==1}, ...
-        vowel_decode_table.(field){vowel_decode_table.Language==2});
-    disp(['p = ' num2str(p)]);
-
-    xticks(1:2);
-    xticklabels({'Spanish', 'English'});
-    xlabel('Language known');
-    ylabel(field);
-    set(gca, 'FontSize', 15);
-    box off;
-    
-    xlim([0.5 2.5]);
-    if strcmp(field, 'Accuracy')
-        ylim([0 0.6]);
-    else
-        ylim([0.5 1]);
-    end
-    chance = 1/vowel_decode_table.NumClasses(s);
-    yline(chance, 'LineStyle', '--', 'LineWidth', 2);
-    title(corpus);
-end
-
-% show the confusion matrix
-for ctr = 1:2
-    corpus = corpora{ctr};
-    subplot(1, 2, ctr);
-
-    % load in data
-    load([datapath 'ecog_decode/vowelCategory/' corpus ...
-            '_vowel_decode_' subj '_' timelabel '_pooled.mat']);
-    for s = 1:height(vowel_decode_table)
-        imagesc(vowel_decode_table.ConfMat);
-    end
-end
-
-clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
-    betaInfo* inflections;
-
-
+% %% Neural decoding of vowel categories (LDA), pooled subject
+% 
+% Svow = Dvow;
+% corpus = 'dimex';
+% incl_vows = dimex_vow;
+% 
+% Svow = TDvow;
+% corpus = 'timit';
+% incl_vows = timit_vow;
+% 
+% SIDs = {sSIDs, eSIDs};
+% SIDsexcl = {'EC222'};
+% for j = 1:2
+%     SIDs{j} = SIDs{j}(~contains(SIDs{j}, SIDsexcl));
+% end
+% 
+% %Svow = addtoDD(Svow, corpus, bef, aft, [eSIDs sSIDs]);
+% subj = 'monolingual';
+% Svow.corpus = corpus;
+% 
+% idx = ismember(Svow.vowel, incl_vows);  %  & Svow.stress==1
+% load(['select_elec/out_elecs_speechtypeftest_bychan_' corpus '_all.mat']);
+% 
+% % load in electrode responses
+% bef = 20;
+% aft = 50;
+% nfolds = 15;
+% 
+% % use neural window from onset to 300 ms after onset & baseline    
+% tps = bef+10:bef+40;
+% timelabel = '100-400ms'; % after onset
+% 
+% Xboth = cell(1, 2);
+% sidsboth = cell(1, 2);
+% for lang = 1:length(SIDs)
+%     % figure out total elecs for all SIDs in this language
+%     total_elecs = sum(cellfun(@(x) length(allidx.(x)), SIDs{lang}));
+%     % Initialize variables to store data for the table
+%     Xboth{lang} = nan(total_elecs, length(tps), length(Svow.vowel(idx)));
+%     sids = cell(total_elecs, 1);
+% 
+%     ctr = 1;
+%     for s = SIDs{lang}
+%         SID = s{1};
+%         % get speech responsive electrodes
+%         disp(['loading subject....' SID])
+%         elecs = allidx.(SID);
+%         for e = 1:length(elecs)
+%             Xboth{lang}(ctr, :, :) = squeeze(Svow.(SID).resp(elecs(e), tps, idx)); 
+%             sids(ctr) = {SID};
+%             ctr = ctr+1;
+%         end
+%     end
+% 
+%     % find electrodes with > 50 NaN trials
+%     if strcmp(corpus, 'dimex')
+%         nanelecs = sum(squeeze(mean(isnan(Xboth{lang}), 2)), 2)>7000;
+%     else
+%         nanelecs = sum(squeeze(mean(isnan(Xboth{lang}), 2)), 2)>50;
+%     end
+%     if sum(nanelecs)>0
+%         disp(['removing ' num2str(sum(nanelecs)) ' electrodes with > 50 NaN trials']);
+%         Xboth{lang} = Xboth{lang}(~nanelecs, :, :);
+%         sids = sids(~nanelecs);
+%     end
+%     sidsboth{lang} = sids;
+% end
+% 
+% % find trials in common across Xboth
+% trls = cellfun(@(x) squeeze(any(isnan(x), [1, 2])), Xboth, 'UniformOutput', false);
+% intertrls = trls{1} | trls{2};
+% idxtmp = find(idx);
+% idx(idxtmp(intertrls)) = 0;
+% Xboth = cellfun(@(x) x(:, :, ~intertrls), Xboth, 'UniformOutput', false);
+% 
+% % Initialize variables to store data for the table
+% acc = cell(length(SIDs), 1);
+% AUC = cell(length(SIDs), 1);
+% n_trials = nan(length(SIDs), 1);
+% n_classes = nan(length(SIDs), 1);
+% SID_list = cell(length(SIDs), 1);
+% elecs_list = cell(length(SIDs), 1);
+% confmat = cell(length(SIDs), 1);
+% confmat_ord = cell(length(SIDs), 1);
+% tps_list = cell(length(SIDs), 1);
+% lang_list = nan(length(SIDs), 1);
+% for lang = 1:length(SIDs)
+% 
+%     y = Svow.vowel(idx);
+%     [X, ~, ~, y, unisids] = makeDataMatrix(Xboth{lang}, y, sidsboth{lang}, 2000, 4, 1);
+%     % 950 if you require vowels to be stressed
+% 
+%     % accuracy is heavily impacted by distribution, make sure trials
+%     % between groups are largely the same
+%     sidstr = join(unisids(:), ' ');
+%     disp(['sids used...' sidstr{:}]);
+%     disp(['num trials used...' num2str(length(y))]);
+% 
+%     rng(2);
+%     [~, ~, auc, ~, ~, acc_tmp, ~, y_hat] = lda(X', y, 1, [], tps, nfolds);
+% 
+%     [C,order] = confusionmat(y, y_hat);
+% 
+%     % Store data for the table
+%     acc(lang) = {acc_tmp};
+%     AUC(lang) = {auc};
+%     n_trials(lang) = length(y);
+%     n_classes(lang) = length(unique(y));
+%     SID_list{lang} = unisids;
+%     tps_list{lang} = tps;
+%     lang_list(lang) = lang;
+%     confmat(lang) = {C};
+%     confmat_ord(lang) = {order};
+% 
+%     % display mean AUC
+%     disp(['ls = ' num2str(lang) ' mean AUC = ' num2str(mean(AUC{lang}))]);
+% end
+% 
+% % Create a table from the collected data
+% vowel_decode_table = table(SID_list, acc, AUC, n_trials, n_classes, tps_list, lang_list, ...
+%     confmat, confmat_ord, ...
+%     'VariableNames', {'SID', 'Accuracy', 'AUC', 'NumTrials', 'NumClasses', ...
+%     'TimePoints', 'Language', 'ConfMat', 'ConfMatOrd'});
+% 
+% filename = [corpus '_vowel_decode_' subj '_' timelabel '_pooled.mat']; % dimex filename
+% save([datapath 'ecog_decode/vowelCategory/' filename], 'vowel_decode_table');
+% 
+% clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+%     betaInfo* inflections;
+% 
+% %% Visualize pooled results from both corpora together
+% 
+% figure;
+% subj = 'monolingual';
+% timelabel = '100-400ms'; % after onset
+% corpora = {'dimex', 'timit'};
+% field = 'AUC';
+% for ctr = 1:2
+%     corpus = corpora{ctr};
+%     subplot(1, 2, ctr);
+% 
+%     % load in data
+%     load([datapath 'ecog_decode/vowelCategory/' corpus ...
+%         '_vowel_decode_' subj '_' timelabel '_pooled.mat']);
+% 
+%     % plot the median AUC for each subject, colored by language
+%     spkrs = {'Spanish', 'English'};
+%     for s = 1:height(vowel_decode_table)
+%         % numel = length(vowel_decode_table.Electrodes{s});
+%         rng(2);
+%         randjitter = @(x, y) y + randn(x, 1)*0.05;
+%         numfolds = size(vowel_decode_table.(field){s}, 1);
+%         if vowel_decode_table.Language(s) == 1
+%             scatter(1+randjitter(numfolds, 0), vowel_decode_table.(field){s}, 100, 'filled', ...
+%                 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5); hold on;
+%             boxplot(vowel_decode_table.(field){s}, ...
+%             'Positions', 1, 'Colors', 'k', 'Labels', spkrs{s});
+%         else
+%             scatter(2+randjitter(numfolds, 0), vowel_decode_table.(field){s}, 100, 'filled', ...
+%                 'MarkerFaceColor', 'r', 'MarkerFaceAlpha', 0.5); hold on;
+%             boxplot(vowel_decode_table.(field){s}, ...
+%             'Positions', 2, 'Colors', 'k', 'Labels', spkrs{s});
+%         end        
+%     end
+% 
+%     % look at difference between languages
+%     [~, p] = ttest2(vowel_decode_table.(field){vowel_decode_table.Language==1}, ...
+%         vowel_decode_table.(field){vowel_decode_table.Language==2});
+%     disp(['p = ' num2str(p)]);
+% 
+%     xticks(1:2);
+%     xticklabels({'Spanish', 'English'});
+%     xlabel('Language known');
+%     ylabel(field);
+%     set(gca, 'FontSize', 15);
+%     box off;
+% 
+%     xlim([0.5 2.5]);
+%     if strcmp(field, 'Accuracy')
+%         ylim([0 0.6]);
+%     else
+%         ylim([0.5 1]);
+%     end
+%     chance = 1/vowel_decode_table.NumClasses(s);
+%     yline(chance, 'LineStyle', '--', 'LineWidth', 2);
+%     title(corpus);
+% end
+% 
+% % show the confusion matrix
+% for ctr = 1:2
+%     corpus = corpora{ctr};
+%     subplot(1, 2, ctr);
+% 
+%     % load in data
+%     load([datapath 'ecog_decode/vowelCategory/' corpus ...
+%             '_vowel_decode_' subj '_' timelabel '_pooled.mat']);
+%     for s = 1:height(vowel_decode_table)
+%         imagesc(vowel_decode_table.ConfMat);
+%     end
+% end
+% 
+% clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+%     betaInfo* inflections;
+% 
+% 
 %% ------- Functions --------
 
 % Two sample ttest over time

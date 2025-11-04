@@ -21,7 +21,7 @@ end
 clearvars -except *all* subj *vow* *details *SIDs datapath bef aft tps ...
     *encoding* allidx fthresh *cons* phnnames vs vidx;
 
-%% A - VOT distribution in timit
+%% A - FIX COLOR: VOT distribution in timit
 
 % set up
 struct = timit_details;
@@ -291,8 +291,8 @@ line_cols = getColorsCrossComp(4);
 style = {':', '-', '',  '-.'};
 for ls = [1, 2, 4]
     el_type = {vot_encoding.ls(plus_idx)==ls, vot_encoding.ls(~plus_idx)==ls};
-    disp(['ls: ' num2str(ls) ' minus:' num2str(sum(el_type{2})) ...
-        ', plus:' num2str(sum(el_type{1}))]);
+    disp(['ls: ' num2str(ls) ' plus:' num2str(sum(el_type{2})) ...
+        ', minus:' num2str(sum(el_type{1}))]);
 
     for t = 1:2
         subplot(1, 2, t)

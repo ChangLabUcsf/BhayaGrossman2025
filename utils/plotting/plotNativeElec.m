@@ -38,8 +38,7 @@ function [native_plot] = plotNativeElec(SIDs, desel, plot, imgall)
                         selid = zeros(n, 1);
                         if isfield(desel.(SID), 'selid')
                             selid = ismember(elidx, desel.(SID).selid);
-                        end
-                        % x = cat(1, x, [b, c]);                        
+                        end                     
                         
                         % make sure dimensions match
                         elidx = reshape(elidx, [n, 1]);
@@ -65,7 +64,7 @@ function [native_plot] = plotNativeElec(SIDs, desel, plot, imgall)
                     fig = figure();
                     axh = axes('Parent', fig);
                     hold(axh, 'on');   
-                    ctmr_gauss_plot(img_native.cortex,[0 0 0], 0, imgall.(SID).hemi)
+                    ctmr_gauss_plot(img_native.cortex,[0 0 0], 0, imgall.(SID).hemi)                    
 
                     % plot all other electrodes on native brain
                     elidx = find(~ismember(1:size(img_native.elecmatrix, 1), ...
@@ -74,7 +73,6 @@ function [native_plot] = plotNativeElec(SIDs, desel, plot, imgall)
                         img_native.elecmatrix(elidx, 2), ...
                         img_native.elecmatrix(elidx, 3), 5, [0 0 0], 'o', ...
                         'filled', 'MarkerFaceAlpha', 0.8);  hold on;
-
 
                     condidx = arrayfun(@(x) find(desel.conds==x), native_plot.cond(idx));               
                     scatter3(native_plot.x(idx), native_plot.y(idx), native_plot.z(idx), ...
@@ -92,9 +90,6 @@ function [native_plot] = plotNativeElec(SIDs, desel, plot, imgall)
                         75, 'k', 'o', 'MarkerEdgeColor', 'k', 'LineWidth', 1.5); 
                     title(SID)
                 end
-            % catch
-            %     warning(['Missing electrode information for ' SID])
-            % end
         end
         
     end

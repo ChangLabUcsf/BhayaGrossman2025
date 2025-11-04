@@ -1,3 +1,4 @@
+
 % Ilina Bhaya-Grossman
 % 01.08.2022
 out_crosscomp_startup;
@@ -513,7 +514,8 @@ uv_thresh = 0;
 feats = { 'word+surp'}; % 'peakrate', 'formant', 'consonant',
 
 figure();
-for native = 0:1
+titles = {'foreign', 'native'};
+for native = 1:1
     for f = 1:length(feats)
         feat = feats{f};
         index = find(ismember(wordsurp_details.featureOrd, feat));
@@ -586,39 +588,28 @@ for native = 0:1
         end
         desel.cols = [0.3 0.3 0.3; cls(3:end, :)];
 
-        figure;
-        colormap(desel.cols);
-        colorbar;
+        % figure;
+        % colormap(desel.cols);
+        % colorbar;
         
-        mni_lh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'lh', 0, 1, imgall);
-        
+        mni_lh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'lh', 0, 1, imgall); 
         sgtitle(native);
         l = light;
         view(270, 0);   
         set(l,'Style', 'infinite', 'Position', [-1 0 0],'Color',[0.8 0.8 0.8]);
-        alpha 0.85;
-        % add a pie
-        % axes('Position',[.6 .15 .3 .3])
-        % p = pie([sum(mni_lh.cond>1), sum(mni_lh.cond==1)], [1 1]); 
-        % p(1).FaceColor = [desel.cols(5, :)];
-        % p(1).EdgeColor = 'none';
-        % p(3).FaceColor = [0.6 0.6 0.6];
-        % p(3).EdgeColor = 'none';
-        % p(2).Color = 'w';
-        % p(2).FontWeight = 'bold';
-        % p(2).FontSize = 13;
-        % p(4).FontWeight = 'bold';
-        % p(4).Color = 'w';
-        % p(4).FontSize = 13;
+        alpha 0.9; 
+        print(fullfile(['brain_images/Fig2_LH_wordsurp_' titles{native+1} '.eps']), '-djpeg', '-vector', '-r600')
 
         mni_rh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'rh', 0, 1, imgall);
         sgtitle(native);
         l = light;
         view(90, 0);
-        set(l,'Style', 'infinite', 'Position',[1 0 0],'Color',[0.8 0.8 0.8]);
-        alpha 0.85;
+        set(l,'Style', 'infinite', 'Position',[1 0 1],'Color',[0.8 0.8 0.8]);
+        alpha 0.9;
+        print(fullfile(['brain_images/Fig2_RH_wordsurp_' titles{native+1} '.eps']), '-djpeg', '-vector', '-r600')
      end
 end
+
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;

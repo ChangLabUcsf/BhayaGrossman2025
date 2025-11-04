@@ -208,9 +208,7 @@ xlim([0, 310]);
 subplot(1, 2, 2);
 % remove areas with count < 5 and sort by count
 anat_counts{2} = anat_counts{2}(anat_counts{2}.count >= 5, :);
-ord_anat2 = cellfun(@(x) find(strcmp(x, anat_counts{2}.area)), ...
-    anat_counts{1}.area);
-anat_counts{2} = anat_counts{2}(ord_anat2, :);
+anat_counts{2} = sortrows(anat_counts{2}, 'count', 'descend');
 barh(anat_counts{2}.area, anat_counts{2}.count, 'FaceColor', ...
     cols(2, :), 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Blue color for native
 title(titles{2});
@@ -223,26 +221,23 @@ xlim([0, 310]);
 
 figure;
 % remove areas with count < 5 and sort by count
-% Make this a single bar
+
 anat_counts{1} = anat_counts{1}(anat_counts{1}.count >= 5, :);
 anat_counts{1} = sortrows(anat_counts{1}, 'count', 'descend');
 ord_anat2 = cellfun(@(x) find(strcmp(x, anat_counts{2}.area)), ...
     anat_counts{1}.area);
 anat_counts{2} = anat_counts{2}(ord_anat2, :);
-assert(all(arrayfun(@(x) strcmp(anat_counts{1}.area{x}, ...
-    anat_counts{2}.area{x}), 1:height(anat_counts{2}))))
-b = barh(anat_counts{1}.area, [anat_counts{1}.count ...
-    anat_counts{2}.count], 'FaceAlpha', ...
-    0.7, 'EdgeColor', 'none', 'BarWidth', 1); % Red color for non-native
-b(1).FaceColor = cols(1, :);
-b(2).FaceColor = cols(2, :);
+assert(arrayfun(@(x) anat_counts{1}.area()))
+barh(anat_counts{1}.area, anat_counts{1}.count, 'FaceColor', ...
+    cols(1, :), 'FaceAlpha', 0.7, 'EdgeColor', 'none'); % Red color for non-native
 title(titles{1});
-
 xlabel('Count');
 ylabel('Anatomical Area');
 set(gca, 'FontSize', 14);
 box off;
 xlim([0, 310]);
+
+% Make this a single bar
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd* *modelnames*;

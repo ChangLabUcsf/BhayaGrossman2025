@@ -235,11 +235,13 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
 f = figure; 
 pthresh = 0.01;
 
-% SIDs = {'EC183'}; % English example
-% els = 71;
+SIDs = {'EC183'}; % English example
+speakertype = 'English';
+els = 71;
 
-SIDs = {'EC100'}; % Spanish example
-els = 132;
+% SIDs = {'EC100'}; % Spanish example
+% speakertype = 'Spanish';
+% els = 132;
 
 plotSingleTrial = 0;
 numel = length(els);
@@ -291,66 +293,17 @@ for s = [2, 1]
         h=xline(0);
         h.Color = 'k';
         legend('off');
-
-        if plotSingleTrial
-            numtrials = 100;
-            
-            wordOnsResp = squeeze(dummy.(SID).resp(els(ctr), :, logical(dummy.wordOns)));
-            syllOnsResp = squeeze(dummy.(SID).resp(els(ctr), :, ~logical(dummy.wordOns)));
-
-            % remove all nans
-            wordOnsResp = wordOnsResp(:, ~any(isnan(wordOnsResp), 1));
-            syllOnsResp = syllOnsResp(:, ~any(isnan(syllOnsResp), 1));
-
-            % find syllable trials most similar to the average
-            [~, idx] = sort(arrayfun(@(x) corr(mean(syllOnsResp, 2, 'omitnan'), ...
-                syllOnsResp(:, x), 'Type', 'Spearman'), 1:size(syllOnsResp, 2)));
-
-            figure;
-            subplot(1, 2, 1); 
-            xdata = -0.5:0.01:0.5;
-            imagesc(xdata, 1:numtrials, syllOnsResp(:,idx(1:numtrials))'); hold on;
-            clim([-5 5]);
-            yticks([1 100]);
-            ylabel('trials');
-            yyaxis right; 
-            plot(xdata, mean(syllOnsResp, 2, 'omitnan'), 'Color', 'k', 'LineWidth', 2.5);
-            title('Syllable');
-            xline(0, 'Color', 'k', 'LineWidth', 2.5);
-            xlim([-0.2, 0.4]);
-            ylim([0.2 1]);
-            yticks([0 0.5 1]);
-            colormap(flipud(prgn));
-            set(gca, 'FontSize', 13);
-            
-            % word trials
-            [~, idx] = sort(arrayfun(@(x) corr(mean(wordOnsResp, 2, 'omitnan'), ...
-                wordOnsResp(:, x), 'Type', 'Spearman'), 1:size(wordOnsResp, 2)));
-
-            subplot(1, 2, 2);
-            imagesc(xdata, 1:numtrials, wordOnsResp(:,idx(1:numtrials))'); hold on;
-            yticks([1 100]);
-            ylabel('trials');
-            clim([-5 5]);
-            % make imagesc lighter
-            yyaxis right; 
-            plot(xdata, mean(wordOnsResp, 2, 'omitnan'), 'Color', cols(2, :), 'LineWidth', 2.5);
-            xline(0, 'Color', 'k', 'LineWidth', 2.5);
-            xlim([-0.2, 0.4]);
-            ylim([0.2 1]);
-            yticks([0 0.5 1]);
-            title('Word');
-            set(gca, 'FontSize', 13);
-        end
     end
     clear dummy
 end
 
 % initialize design electrode structure
 fieldnames = {'Spanish', 'English'};
+
 fields = {'sp_uv_all', 'eng_uv_all', '', 'sp_uv_all'}; 
 % uv feature order
 feats = { 'word+surp'}; % 'peakrate', 'formant', 'consonant', 'surp', 'word'
+titles = {'foreign', 'native'};
 
 for lang = 1:2
     for f = 1:length(feats)
@@ -421,24 +374,28 @@ for lang = 1:2
             view(90, 0);
             set(l,'Style', 'infinite', 'Position',[1 0 1],'Color',[0.8 0.8 0.8]);
         end
+        alpha 0.9;
 
-        alpha 0.8;
+        % print(fullfile(['brain_images/Fig3_example' speakertype '_wordERP_' ...
+        %     titles{logical(lang==ls)+1} '.eps']), '-djpeg', '-vector', '-r600');
     end
 end
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* *wrd*;
 
-%% CHANGE THIS IN PROOF F - Single electrode quantity of Word-Syllable difference (takes a min to run)
+%% F - Single electrode quantity of Word-Syllable difference
 
 load([datapath 'Figure3/Figure3_WordSyllDiff.mat']);
+mincontig = 5; % 50ms of contiguous word and syllable difference
 
 % remove all electrodes with no significant windows
-electbl = electbl(electbl.dimex_contigsig>5 | electbl.timit_contigsig>5, :);
+electbl = electbl(electbl.dimex_contigsig>mincontig | electbl.timit_contigsig>mincontig, :);
 
-figure('Position', [100, 300, 550, 300], 'Renderer', 'painters');
+figure('Position', [100, 300, 550, 300], ...
+    'Renderer', 'painters');
 % make boxchart for each condition
-idx = electbl.natcontig>5 & electbl.forcontig>5;
+idx = electbl.natcontig>mincontig & electbl.forcontig>mincontig;
 boxchart(ones(size(electbl.natcontig(idx), 1), 1), [electbl.natcontig(idx)], ...
                     'BoxFaceColor', [0.5 0.5 0.9], 'JitterOutliers', 'on', ...
                     'MarkerStyle', '.', 'MarkerColor', 'k', 'Notch','on', 'BoxWidth', 0.5); hold on;
@@ -450,8 +407,9 @@ ylim([0 40]);
 xlim([0.5 2.5]);
 yticks(0:20:40);
 yticklabels({'0', '0.2', '0.4'});
-ylabel('Contiguous significant difference (s)');
+ylabel('Time (s)');
 xticks([1 2]);
+yline(mincontig);
 xticklabels({'Native', 'Foreign'});
 set(gca, 'FontSize', 13);
 box off;
@@ -484,11 +442,12 @@ for i = 1:size(electbl, 1)
 end
 plot([1 2], [median(electbl.natcontig), median(electbl.forcontig)], 'Color', 'k', 'LineWidth', 2);
 
-% show a pie chart with the number of electrodes that show signifcant differences for only native, only foreign, and both
+% show a pie chart with the number of electrodes that
+% show signifcant differences for only native, only foreign, and both
 figure;
-p = pie([sum(electbl.natcontig>5 & electbl.forcontig<=5), ...
-    sum(electbl.natcontig<=5 & electbl.forcontig>5), ...
-    sum(electbl.natcontig>5 & electbl.forcontig>5)], [1 1 1]);
+p = pie([sum(electbl.natcontig>mincontig & electbl.forcontig<=mincontig), ...
+    sum(electbl.natcontig<=mincontig & electbl.forcontig>mincontig), ...
+    sum(electbl.natcontig>mincontig & electbl.forcontig>mincontig)], [1 1 1]);
 p(1).FaceColor = [0.3 0.5 0.9];
 p(1).EdgeColor = 'none';
 p(3).FaceColor = [0.9 0.5 0.5];
