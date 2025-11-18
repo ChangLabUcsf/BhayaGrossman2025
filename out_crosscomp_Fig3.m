@@ -1,7 +1,8 @@
-% <% Ilina Bhaya-Grossman
-% 01.08.2022
+% Ilina Bhaya-Grossman
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
-% tps = 50:55;
 
 % selected electrodes
 timit_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_timit_all.mat");
@@ -11,7 +12,7 @@ dimex_elecs = load("select_elec/out_elecs_speechtypeftest_bychan_dimex_all.mat")
 bef=50;
 aft=50;
 
-% load word structures
+% load word structures (takes a minute to run)
 if ~exist('Dwrd', 'var')
     load([datapath 'Figure3/Figure3_DIMEXWrd.mat']);
 end
@@ -128,6 +129,8 @@ for lang = 1:2
     %sgtitle(idx)
 end
 
+clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
+    betaInfo* *encoding* allidx fthresh *cons* *wrd *elecs;
 
 %% C - Acoustic word-boundary decoding (takes a minute to run)
 
@@ -239,6 +242,7 @@ SIDs = {'EC183'}; % English example
 speakertype = 'English';
 els = 71;
 
+% Uncomment to see Spanish example
 % SIDs = {'EC100'}; % Spanish example
 % speakertype = 'Spanish';
 % els = 132;

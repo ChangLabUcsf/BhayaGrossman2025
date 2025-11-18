@@ -1,4 +1,7 @@
-%% Set up
+% Ilina Bhaya-Grossman
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
 
 dSIDs = [profile_all{5}.SID; profile_all{3}.SID; profile_all{4}.SID;]; 
@@ -208,7 +211,7 @@ corpus = 'TIMIT';
 timelabel = '600ms';
 
 filename = [corpus '_word_decode_diverse_' timelabel '_bysubj.mat']; % dimex filename
-load([datapath 'ecog_decode/wordOnset/' filename], 'decode_details');
+load([datapath 'Figure3/decode/' filename], 'decode_details');
 
 [~, idx] = sort(prof_all);
 

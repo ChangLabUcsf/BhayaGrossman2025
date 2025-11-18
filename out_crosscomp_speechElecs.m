@@ -1,4 +1,3 @@
-
 % load in all subjects
 [sSIDs, eSIDs, bSIDs, mSIDs, dSIDs] = getSIDinfo();
 

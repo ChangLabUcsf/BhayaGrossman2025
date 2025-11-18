@@ -1,5 +1,7 @@
 % Ilina Bhaya-Grossman
-% 01.08.2022
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
 
 [~,~, bSIDs, ~] = getSIDinfo();
@@ -875,8 +877,8 @@ for lang = 1:2
         alpha 0.9;
         sgtitle(fieldnames{lang});
 
-        print(fullfile(['brain_images/Fig5_example_bilingual_' ...
-              fieldnames{lang} '.eps']), '-djpeg', '-vector', '-r600');
+        % print(fullfile(['brain_images/Fig5_example_bilingual_' ...
+        %       fieldnames{lang} '.eps']), '-djpeg', '-vector', '-r600');
         %cla;
     end
 end
@@ -901,12 +903,10 @@ ctr = 1;
 ax = nan(3, 1);
 
 cols = getColorsCrossComp(6);
-% cols = [256 256 256; 28 117 188; 8 70 128;]./256;
 % make a patch in the lower right quadrant thats light red
 patch([0 0 0.08 0.08], [-0.02 0.08 0.08 -0.02], cols(1, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35);
 % make a patch in the upper left quadrant thats light blue
 patch([0.08 0.08 -0.02 -0.02], [0 0.08 0.08 0], cols(2, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35); hold on;
-%patch([0 0 -0.01 -0.01], [0 0.08 0.08 0], cols(2, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35);
 
 % Iterate over the labels
 for label = labels
@@ -934,7 +934,6 @@ for label = labels
         wordsurp_encoding.SID(wordsurp_encoding.ls==ls));
     
     % Remove data points that do not meet the UV threshold or contain NaN values
-    % all([x,y]<uv_thresh, 2)
     neg = any([pvals_x,pvals_y]>pval_thresh, 2) | isnan(x) | isnan(y);
     %neg = all([x,y]<uv_thresh, 2) | isnan(x) | isnan(y);
     x(neg) = [];
@@ -977,7 +976,8 @@ for label = labels
     [r, p] = corr(x_all(x_all>0&y_all>0), y_all(x_all>0&y_all>0), 'Rows', ...
         'complete', 'type', 'Spearman');
     title({['r= (' num2str(sum(x_all>0&y_all>0)) '),' num2str(r)], ['p=' num2str(p, 4)]});
-     % Increment the subplot counter
+    
+    % Increment the subplot counter
     ctr = ctr + 1; 
     hold on;
 end
@@ -1015,8 +1015,6 @@ cols = [1 1 1; cols(2, :); cols(1, :); mean(cols)];
 cols = brighten(cols, 0.8);
 colormap(ax, cols);
 
-% colormap(ax, flipud(gray));
-%colormap([1 1 1; 1 0 0; 1 0 1;0 0 1])
 % add in the text overlaid
 quads = flipud(rot90(quads));
 for x = 1:2

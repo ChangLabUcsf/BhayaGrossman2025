@@ -1,6 +1,7 @@
-%% Set up
 % Ilina Bhaya-Grossman
-% 01.08.2022
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
 SIDs = [sSIDs, eSIDs, {'HS11', 'HS9', 'HS10'}];
 
@@ -112,7 +113,7 @@ for t = 1 % Type
     plt = plts{t};
     for c = 1:2
         h = boxchart(ones(size(plt, 2), 1)*c, plt(c, :), ...
-            'BoxFaceColor', [1 1 1], 'BoxEdgeColor', 'k'); % Creates boxplots
+            'BoxFaceColor', [1 1 1], 'BoxEdgeColor', 'k', 'MarkerStyle','none'); % Creates boxplots
         h.JitterOutliers = 'on';
         h.MarkerStyle = '.';
         h.MarkerColor = 'k';
@@ -129,7 +130,7 @@ for t = 1 % Type
     % Perform a ttest on the native vs. non-native decoding
     [h, p] = ttest2(plt(1, :), plt(2, :), "Tail", "right"); 
     line([1.25 1.75], [.85, .85], 'Color', 'k', 'LineWidth', 1.5); % Draws a line
-    text(1.35, .87, getSigStr(p, 2), 'FontSize', 13); % Adds text to the plot
+    text(1.37, .87, getSigStr(p, 1), 'FontSize', 20); % Adds text to the plot
     
     % Formatting
     xlabel('Group Type');
@@ -257,9 +258,9 @@ x = -befaft(1):0.01:befaft(2);
 colors = [0.2 0.2 0.2; 0.2 0.2 0.2];
 addpath(genpath('shadederror/'))
 
-figure;
 ctr=1;
 titles = {'Spanish', 'English'};
+figure;
 for i = {Dwrd, TDwrd}
     subplot(2, 1, ctr)
     ywrd = squeeze(cat(3, i{1}.env{logical(i{1}.wordOns)}))';

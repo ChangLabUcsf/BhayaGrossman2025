@@ -6,8 +6,7 @@ function [colors] = getColorsCrossComp(type)
             colors(4, :) = [35 170 225]./256;
         case 2 % primary feature encoding map
             colors = brewermap(3, 'Dark2');
-        case 3 % word syllable distinction
-%             colors = [0.6 0 0.6; 0.1 0.7 0.2];
+        case 3 % word-syllable distinction
             colors = [0.3 0.3 0.3; 0.6 0 0.6];
         case 4 % VOT
             colors = nuclear(8);

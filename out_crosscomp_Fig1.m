@@ -1,6 +1,7 @@
 % Ilina Bhaya-Grossman
-% 01.08.2022
-% SIDs = [sSIDs, eSIDs];
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
 
 % load in all beta model versions
@@ -98,13 +99,9 @@ nativeSIDs = {'EC100'};
 cm = [0 0 1; 1 0 0];
 
 bins = 15;
-% elecs = 203; % for EC183 , 156, 160
-% elecs = 137; % for EC172
-elecs = 22; % for EC100 % [3, 54]; % for EC214
-% SID: [183, 214, 186, 195, 105]
-% Elec: [72, 245, 212, 203, 63]
+elecs = 22; % for EC100 
+% [3, 54]; % for EC214
 
-titles = {'native', 'foreign'};
 for l = 1:2
     binedges = linspace(prctile(sent_encoding.maxresp(:, l), 5), ...
         prctile(sent_encoding.maxresp(:, l), 100), bins);
@@ -729,8 +726,7 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd* corrstrf corrpval maxrsq;
 
 %% ----------------------- Supplementary Figures --------------------------
-%% ADDF0: S1 - Spectral and Temporal MTFs for all stimuli
-% Note: Will take about two minutes to calculate
+%% S1 - Spectral and Temporal MTFs for all stimuli
 
 corpora = {timit_details, dimex_details, asccd_details};
 corpuslabels = {'timit', 'dimex',  'asccd'};
@@ -742,50 +738,12 @@ for c = 1:length(corpora)
     corpus_details = corpora{c};
     corpus = corpuslabels{c};
 
-    % Create two NaN matrices of size 450x4096
-    p = nan(450, 4096);
-    d = nan(450, 4096);
-
-    % Create a NaN matrix of size 100x257x512
-    mtf = nan(100, 257, 512);
-    ctr = 1;
-
-    % Iterate over the first 200 sentences
-    for i = 1:58 % minimum number of sentences
-        fs = 16000;
-        % fs = 44100;
-
-        % Calculate the power spectrum of the sound in the i-th sentence
-        [p(i, :),~] = pspectrum(corpus_details.sentdet(i).sound, fs);
-
-        % Define start positions for segmentation
-        strts = 50:60:size(corpus_details.sentdet(i).aud, 2)-120;
-
-        % Add F0 (fundamental frequency) for the sentence from corpus_details
-        f0 = addF0(corpus_details.sentdet(i), corpus);
-
-        % Remove zero values from f0
-        f0(f0==0) = [];
-
-        % Check if the mean of f0 is greater than 170
-        if mean(f0) > 170
-            % Iterate over the start positions
-            for j = 1:length(strts)
-
-                % Extract a segment of audio data and compute the MTF
-                segaud = corpus_details.sentdet(i).aud(:, strts(j):strts(j)+60);
-                [mtf(ctr, :, :), xax, yax, btm, bsm] = get_MTF_bsm_btm(segaud, ...
-                    corpus_details.sentdet(i).dataf, 8);
-
-                % Increment the counter
-                ctr = ctr + 1;
-            end
-        end
-    end
+    % load mtf file
+    load([datapath '/Figure1/' corpus 'MTF.mat'], 'mtf', 'xax', 'yax');
 
     % Display the average MTF as an image
     subplot(1, 3, c);
-    imagesc(xax, fliplr(yax), squeeze(mean(mtf, 'omitnan')));
+    imagesc(xax, fliplr(yax), mtf);
     title(corpus);
     hold on;
     set(gca, 'Ydir', 'normal');
@@ -793,9 +751,6 @@ for c = 1:length(corpora)
     ylim([0, 0.75]);
     colormap(inferno);
     brighten(0.6)
-
-    % Add contour lines to the image
-    % contour(xax, fliplr(yax), squeeze(mean(mtf)), 'Color', [0 0 0], 'LineWidth', 1.75);
 
     % Set labels and font size
     ylabel('Spectral modulation (cycles/oct)');
@@ -1189,7 +1144,7 @@ disp(['n = (' num2str(length(native_peak)) ', ' num2str(length(foreign_peak)) ')
 clearvars -except *all subj *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
 
-%% TRF: S4 - Cross-language transfer of TRF weights
+%% S4 - Cross-language transfer of TRF weights
 % Takes a minute or two to run.
 
 % Repeated sentences in DIMEx and TIMIT
@@ -1198,144 +1153,12 @@ repsentName = {'s00104','s00804', 's01904', 's03004', 's05004', ...
     'fcaj0_si1479', 'fcaj0_si1804', 'fdfb0_si1948', 'fdxw0_si2141', ...
     'fisb0_si2209', 'mbbr0_si2315', 'mdlc2_si2244', 'mdls0_si998', ...
     'mjdh0_si1984', 'mjmm0_si625'};
-figure;
 
 % Participants with no repeated sentences for DIMEx so unable to calculate
 % cross-language predictions / Mandarin participants
 SIDs(ismember(SIDs, {'EC252', 'EC152', 'HS8', 'HS9', 'HS10'})) = [];
-for samelang = {'dimex', 'timit'}
-    
-    if strcmp(samelang, 'dimex')
-        predcols = {'b', 'r'}; 
-        crosslang = 'timit';
-        sentdet = dimex_details.sentdet(ismember({dimex_details.sentdet.name}, ...
-            repsentName));
-    elseif strcmp(samelang, 'timit')
-        predcols = {'r', 'b'};  
-        crosslang = 'dimex';
-        sentdet = timit_details.sentdet(ismember({timit_details.sentdet.name}, ...
-            repsentName));
-    end
-    
-    % Initialize all the correlation structures
-    samelang_corr = cell(length(SIDs), 1);
-    crosslang_corr = cell(length(SIDs), 1);
-    pred_corr = cell(length(SIDs), 1);
-    
-    testR_same = nan(height(sent_encoding), 1);
-    testR_cross = nan(height(sent_encoding), 1);
-    
-    ctr = 1;
-    dataf = 100;
-    for s = SIDs
-        SID = s{1};
-        idx = strcmp(sent_encoding.SID, SID);
-        modelname = 'onset_phnfeatConsOnset_maxDtL_formantMedOnset';
-    
-        % iterate over languages
-        testlangs = {samelang, crosslang};
-        for i = 1:2
-            testlang = testlangs{i};
-            [out, ~] = out_addStrfpred(SID, samelang{1}, modelname, 1, ...
-                sentdet, testlang); % test language will either be the same or cross
-    
-            % calculate the correlation between predResp and pred for each sentence
-            % with the padding removed!
-            tmp = nan(sum(idx), length(out));
-            for j = 1:length(out)
-                bef = out(j).befaft(1)*dataf;
-                % if the output is 3D, then we need to mean the over the repetitions (3rd dim)
-                if length(size(out(j).resp)) == 3
-                    x = mean(out(j).resp(sent_encoding.el(idx), bef:end-bef, :), 3);
-                else
-                    x = out(j).resp(sent_encoding.el(idx), bef:end-bef);
-                end
-                y = out(j).predResp(sent_encoding.el(idx), bef:end-bef);
-                tmp(:, j) = diag(corr(x', y', 'rows', 'pairwise'));
-            end
-            if i == 1
-                testR_same(idx) = mean(tmp, 2);
-                out_same = out;
-            else
-                testR_cross(idx) = mean(tmp, 2);
-                out_cross = out;
-            end
-            clear out tmp x y;
-        end
-       
-        % Plot several example sentence predictions
-        if strcmp(SID, 'EC100')
-            % [~, maxels] = max(mean(cat(3, testR_cross(1:minel, :), 
-            % testR_same(1:minel, :)), [2, 3],'omitnan'));
-    
-            % Use the same electrodes from above for cross-prediction example
-            maxels = 22; %  150
-            
-            % Plot each electrode example sentences as a new figure
-            for maxel = maxels
-                figure('renderer', 'painters');
-    
-                for sent = 2          
-                    subplot(1, 1, 1);                            
-    
-                    % Smooth neural response 
-                    data = smoothdata(squeeze(out_same(sent).resp(maxel, :, :)), ...
-                        'gaussian', 'SmoothingFactor', 0);
-                    x = -0.49:0.01:0.01*size(out_same(sent).resp, 2)-0.5;        
-                    
-                    % Plot true neural response
-                    if size(data, 1) == 1
-                        plot(x, data, 'LineWidth', 1.75, 'Color', predcols{1});
-                        hold on;
-                    else
-                        data = data - mean(data(1:55, :), [1, 2]);
-                        addpath(genpath('../../../ecog_scripts'));
-                        shadedErrorBar(x, data', {@mean,@nansem}, ...
-                            {'color', predcols{1}, 'linewidth', 1.75, ...
-                            'DisplayName', 'response'}, 0.3);
-                        hold on;
-                    end
-                    ylabel('HFA (z)');
-                    
-                    % Plot predicted responses
-                    yyaxis right
-                    samepred = squeeze(out_same(sent).predResp(maxel, :));
-                    crosspred = squeeze(out_cross(sent).predResp(maxel, :));       
-    
-                    plot(x, samepred, 'LineStyle', '--', ...
-                        'LineWidth', 2, 'Color', predcols{1}, ...
-                        'DisplayName', 'same-prediction');
-                    plot(x, crosspred, 'LineStyle', '--', ...
-                        'LineWidth', 2, 'Color', predcols{2}, ...
-                        'DisplayName', 'cross-prediction');
-    
-                    xlim([0.2 1.5]);
-                    xlabel('Time (s)')
-    
-                    % show predicted response correlations
-                    if ~strcmp(samelang, 'dimex')
-                        [same_r, ~] = corr(samepred', mean(data, 2));
-                        [cross_r, ~] = corr(crosspred', mean(data, 2));
-                    else
-                        [same_r, ~] = corr(samepred', data');
-                        [cross_r, ~] = corr(crosspred', data');
-                    end
-                    text(0, 0.8, ['Same corr :' num2str(same_r)])
-                    text(0, 0.6, ['Cross corr :' num2str(cross_r)]);
-    
-                    yticks([]);
-                    sentidx = strcmp({sentdet(:).name},  out_cross(sent).name);  
-                    title(join(sentdet(sentidx).wordList, ' '));
-                end                                                 
-            end
-        end
-        ctr = ctr + 1;
-    end
-    sent_encoding.([samelang{1} '_trained']) = [testR_same, testR_cross]; 
-end
 
 % plot the cross- versus same- trained tested model comparison
-figure;
 titles = {'Spanish speech', 'English speech'};
 trained_fields = {'dimex_trained', 'timit_trained'};
 
@@ -1404,7 +1227,7 @@ for h = {'lh', 'rh'}
         if strcmp(hemi, 'lh')
             cortex = imgall.(SIDs{1}).img_mni.cortex;
         else
-            cortex = imgall.(SIDs{6}).img_mni.cortex;
+            cortex = imgall.(SIDs{3}).img_mni.cortex;
         end
 
         subplot(1, 3, plt(native+1))

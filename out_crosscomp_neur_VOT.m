@@ -1,6 +1,7 @@
-%% Set up
 % Ilina Bhaya-Grossman
-% 05.21.2025
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
 if ~exist('Dcons', 'var')
     load("data/ExtendedFigures/ExtFigure5_DIMEXCons.mat");
@@ -21,7 +22,7 @@ end
 clearvars -except *all* subj *vow* *details *SIDs datapath bef aft tps ...
     *encoding* allidx fthresh *cons* phnnames vs vidx;
 
-%% A - FIX COLOR: VOT distribution in timit
+%% A - VOT distribution in timit
 
 % set up
 struct = timit_details;
@@ -60,7 +61,7 @@ for i = 1:length(sentdet)
 end
 
 figure;
-colors = getColorsCrossComp(4);
+colors = flipud(getColorsCrossComp(5));
 y = diff(Dcons.phnTimes(:, ismember(Dcons.phn, {'p', 'k', 't'})));
 [fi, x] = ksdensity(y, 'Bandwidth', 0.55);
 
@@ -71,9 +72,9 @@ plot(x*10, fi, 'LineWidth', 3, 'Color',colors(1, :), 'HandleVisibility', 'off');
 y = diff(TDcons.phnTimes(:, ismember(TDcons.phn, {'p', 'k', 't'})));
 [fi, x] = ksdensity(y, 'Bandwidth', 0.55);
 
-histogram(y*10, 9, 'Normalization', 'Probability', 'FaceColor', colors(1, :)+0.6, ...
+histogram(y*10, 9, 'Normalization', 'Probability', 'FaceColor', colors(5, :)+0.1, ...
     'EdgeColor','none', 'FaceAlpha', 0.8); 
-plot(x*10, fi, 'LineWidth', 3, 'Color', colors(1, :)+0.4, 'HandleVisibility', 'off');
+plot(x*10, fi, 'LineWidth', 3, 'Color', colors(5, :)+0.1, 'HandleVisibility', 'off');
 xlim([15 120]);
 
 legend({'Spanish unvoiced', 'English unvoiced'});
@@ -188,23 +189,17 @@ clearvars -except *all* subj *vow* *details *SIDs datapath bef aft tps ...
 
 %% B - Plotting example VOT erps
 
-% meeting slides
+% Examples
 % V+: Spanish - EC172 el219, English - EC222 el125 
 % V-: Spanish - EC152 el101, English - EC186 el231
-
-% Quals slides
 % V-: Spanish - EC105 el 185, English - EC195 el137
 % V+: Spanish - EC100 el70, English - EC195 el217
 
 phns = {'g', 'k', 'b', 'p' , 'd', 't'}; % , ,  
 rmpath('../util/shadederror');
-% SID = 'EC266'; % 'EC222'
-% el = 134;, 122
-% SID = 'EC100'; % 'EC222'
-% el = 134;
-
-% SID = 'EC195'; % 'EC222'
-% el = 217;
+% EC266 el122
+% EC100 el134
+% EC195 el217
 
 SID = 'EC186'; % 'EC222'
 el = 239;
@@ -221,10 +216,9 @@ vot = 10:10:(8-2)*10;
 pt_cols = flipud(getColorsCrossComp(5));
 y_mean = rescale(vot_encoding.resp(votidx, :),'InputMin', ...
         min(vot_encoding.resp(votidx, :),[],2), ...
-        'InputMax', max(vot_encoding.resp(votidx, :),[],2));
+        'InputMax', max(vot_encoding.resp(votidx, :), [], 2));
 
 scatter(vot, y_mean, 75, pt_cols, 'filled', 'HandleVisibility','off'); hold on;
-
 fsigm = @(param,xval) param(1)+(param(2)-param(1))./...
                     (1+10.^((param(3)-xval)*param(4)));
 [param, stat] = sigm_fit(vot, y_mean, [], [0 1 0.65 0], 0);
@@ -239,23 +233,6 @@ yticklabels({'0', '100'});
 xticks(0:20:60)
 xlim([8, 59])
 set(gca, 'FontSize', 13);
-
-% f = figure; 
-% subplot(1, 3, 1);
-% addpath('util/shadederror');
-% plotPhonemeErp(TDcons, SID, el, 'timit', f, [1 0 0; 0 0 1], {'p'; 'b'});
-% legend('FontSize', 15);
-% set(gca, 'FontSize', 15);
-% subplot(1, 3, 2);
-% plotPhonemeErp(TDcons, SID, el, 'timit', f, [1 0 0; 0 0 1], {'k'; 'g'});
-% legend('FontSize', 15);
-% yticks([]);
-% set(gca, 'FontSize', 15);
-% subplot(1, 3, 3);
-% plotPhonemeErp(TDcons, SID, el, 'timit', f, [1 0 0; 0 0 1], {'t'; 'd'});
-% legend('FontSize', 15);
-% yticks([]);
-% set(gca, 'FontSize', 15);
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh *cons* phns vot_max;

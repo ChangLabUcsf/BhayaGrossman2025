@@ -1,6 +1,7 @@
-
 % Ilina Bhaya-Grossman
-% 01.08.2022
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
 
 % Note - EC202 has no STG coverage
@@ -329,14 +330,13 @@ clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
 
 % field = {'eng_rsq_surprisal', 'sp_rsq_surprisal'}; 
 % field = {'eng_uv_phnfeat', 'sp_uv_phnfeat'}; 
-
 thresh = 0.001;
 
 % To test figure features
 features = {'peakrate', 'formant', 'consonant'};
 titles = {'PeakRate', 'Vowel Formants', 'Consonant'};
 
-% Uncomment to test pitch & env
+% Uncomment to test pitch & env (mentioned in main manuscript)
 % features = {'pitch', 'env'};
 % titles = {'Pitch', 'Envelope'};
 
@@ -513,9 +513,8 @@ uv_thresh = 0;
 % uv feature order
 feats = { 'word+surp'}; % 'peakrate', 'formant', 'consonant',
 
-figure();
 titles = {'foreign', 'native'};
-for native = 1:1
+for native = 0:1
     for f = 1:length(feats)
         feat = feats{f};
         index = find(ismember(wordsurp_details.featureOrd, feat));
@@ -593,23 +592,22 @@ for native = 1:1
         % colorbar;
         
         mni_lh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'lh', 0, 1, imgall); 
-        sgtitle(native);
+        sgtitle(titles{native+1});
         l = light;
         view(270, 0);   
         set(l,'Style', 'infinite', 'Position', [-1 0 0],'Color',[0.8 0.8 0.8]);
         alpha 0.9; 
-        print(fullfile(['brain_images/Fig2_LH_wordsurp_' titles{native+1} '.eps']), '-djpeg', '-vector', '-r600')
+        % print(fullfile(['brain_images/Fig2_LH_wordsurp_' titles{native+1} '.eps']), '-djpeg', '-vector', '-r600')
 
         mni_rh = plotMNIElec(unique(wordsurp_encoding.SID), desel, 'rh', 0, 1, imgall);
-        sgtitle(native);
+        sgtitle(titles{native+1});
         l = light;
         view(90, 0);
         set(l,'Style', 'infinite', 'Position',[1 0 1],'Color',[0.8 0.8 0.8]);
         alpha 0.9;
-        print(fullfile(['brain_images/Fig2_RH_wordsurp_' titles{native+1} '.eps']), '-djpeg', '-vector', '-r600')
+        % print(fullfile(['brain_images/Fig2_RH_wordsurp_' titles{native+1} '.eps']), '-djpeg', '-vector', '-r600')
      end
 end
-
 
 clearvars -except *all subj *vow* *details *SIDs datapath bef aft tps ...
     betaInfo* *encoding* allidx fthresh Dcons *wrd*;
@@ -806,14 +804,10 @@ ctr = 1;
 ax = nan(3, 1);
 
 cols = [256 256 256; 28 117 188; 237 28 36; 200 135 236]./256;
-% make a patch in the upper right quadrant thats light purple
-%patch([0 0.08 0.08 0], [0 0 0.08 0.08], cols(4, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35); hold on;
 % make a patch in the lower right quadrant thats light red
 patch([0 0 0.08 0.08], [-0.01 0.08 0.08 -0.01], cols(3, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35);
-%patch([0 0 0.08 0.08], [-0.01 0 0 -0.01], cols(3, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35);
 % make a patch in the upper left quadrant thats light blue
 patch([0.08 0.08 -0.01 -0.01], [0 0.08 0.08 0], cols(2, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35); hold on;
-%patch([0 0 -0.01 -0.01], [0 0.08 0.08 0], cols(2, :), 'EdgeColor', 'none', 'FaceAlpha', 0.35);
 
 % Iterate over the labels
 for label = labels
@@ -850,7 +844,7 @@ for label = labels
         % all([x,y]<uv_thresh, 2)
         neg = all([pvals_x,pvals_y]>pval_thresh, 2) | ...
             all([x,y]<0, 2) | isnan(x) | isnan(y);
-        %neg = all([x,y]<uv_thresh, 2) | isnan(x) | isnan(y);
+
         x(neg) = [];
         y(neg) = [];
         sid(neg) = [];

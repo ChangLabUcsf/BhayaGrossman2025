@@ -1,10 +1,14 @@
-%% Set up
+% Ilina Bhaya-Grossman
+% 11.19.2025
+% WARNING: Running this script will delete all variables in your current
+% workspace. Proceed with caution.
 out_crosscomp_startup;
 
 % timit vowels are all categories with > 100 trials in stressed type
 timit_vow = {'aa', 'ae', 'ao', 'ah', 'ay', 'ey', 'eh', 'ih', 'iy', 'ow'};
 dimex_vow = {'a', 'e', 'i', 'o', 'u'};
 
+% will take a minute to run
 if ~exist('Dvow', 'var')
     load("data/ExtendedFigures/ExtFigure6_DIMEXVow.mat");
 end
@@ -68,7 +72,7 @@ sgtitle('Vowel Counts');
 clearvars -except *all* subj *vow* *details *SIDs datapath bef aft tps;
 
 
-%% B - FIX COLORS Vowel formant plot
+%% B - Vowel formant plot
 
 figure;
 timit_vow = {'aa', 'ae', 'ao', 'ah', 'ay', 'ey', 'eh', 'ih', 'iy', 'ow'};
@@ -594,7 +598,7 @@ for vowpair = incl_vows
     if ctr==2
         ylabel('Classifier AUC');
     end
-    text(1, 0.7, getSigStr(p, 1));
+    text(1, 0.7, getSigStr(p, 1), 'FontSize', 20);
 
     set(gca, 'FontSize', 15);
     box off;

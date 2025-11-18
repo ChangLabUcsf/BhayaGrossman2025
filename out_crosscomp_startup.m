@@ -1,13 +1,11 @@
-% addpath(genpath('../../../../ecog_scripts'))
-% addpath(genpath('../../../../plotting_scripts'))
+clear;
 addpath(genpath('utils'))
-% zFolder = 'block_z'; % 'block_z'
 
 bef=20;
 aft=50;
+
 % edit this to point to the datapath
 datapath = 'data/';
-
 
 % Note - EC202 has no STG coverage
 [sSIDs, eSIDs, bSIDs, mSIDs, dSIDs] = getSIDinfo();
@@ -84,7 +82,6 @@ modelnames_timit={'phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_engSurp
     'onset_phnfeatConsOnset_maxDtL_formantMedOnset_F0_relPitchBin_F0ChangeBin', ... % pitch (review)
     'onset_phnfeatConsOnset_L_formantMedOnset', ... % continuous envelope (review) 
     }; 
-%'onset_phnfeatConsOnset_maxDtL_formantMedOnset_engSurpNoOnsBin', ... %remove word
 
 modelnames_dimex={'phnfeatConsOnset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ...%remove onset
     'onset_maxDtL_formantMedOnset_wordOns_wordL_spSurpNoOnsBin', ... %remove consonant features        
